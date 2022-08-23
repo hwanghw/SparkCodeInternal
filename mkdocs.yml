@@ -1,0 +1,19 @@
+site_name: SparkCodeInternal
+repo_name: "hwanghw/SparkCodeInternal"
+repo_url: "https://github.com/hwanghw/SparkCodeInternal"
+docs_dir: "docs"
+theme: 
+  name: mkdocs
+  features: 
+    - tabs
+nav:
+  - Introduction: 'index.md'
+  - Spark SQL:
+    - AQE: 'SparkSQL/AQE.md'
+markdown_extensions:
+    - toc:
+        permalink: true
+    - admonition
+    - codehilite
+    - attr_list
+    - md_in_html
