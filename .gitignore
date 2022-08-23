@@ -1,5 +1,6 @@
 .idea
 *.iml
+site
 
 # Compiled class file
 *.class
