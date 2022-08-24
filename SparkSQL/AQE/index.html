@@ -90,6 +90,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-level="2"><a href="#code" class="nav-link">code</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -106,7 +110,595 @@
 <p><a href="https://issues.apache.org/jira/browse/SPARK-29544">SPARK-29544 Optimize skewed join at runtime with new Adaptive Execution</a></p>
 <p><a href="https://issues.apache.org/jira/browse/SPARK-9850">SPARK-9850 Adaptive execution in Spark (original idea)</a><br />
 <a href="https://issues.apache.org/jira/secure/attachment/12749984/AdaptiveExecutionInSpark.pdf">Design Doc</a></p>
-<p><a href="https://issues.apache.org/jira/browse/SPARK-9851">SPARK-9851 Support submitting map stages individually in DAGScheduler</a></p></div>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-9851">SPARK-9851 Support submitting map stages individually in DAGScheduler</a></p>
+<h2 id="code">code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h2>
+<h3 id="orgapachesparksqlexecutionqueryexecutionpreparations">org.apache.spark.sql.execution.QueryExecution#preparations<a class="headerlink" href="#orgapachesparksqlexecutionqueryexecutionpreparations" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="n">private</span><span class="o">[</span><span class="n">execution</span><span class="o">]</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">preparations</span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="nl">sparkSession</span><span class="p">:</span><span class="w"> </span><span class="n">SparkSession</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nl">adaptiveExecutionRule</span><span class="p">:</span><span class="w"> </span><span class="k">Option</span><span class="o">[</span><span class="n">InsertAdaptiveSparkPlan</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="nl">subquery</span><span class="p">:</span><span class="w"> </span><span class="k">Boolean</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="n">Seq</span><span class="o">[</span><span class="n">Rule[SparkPlan</span><span class="o">]</span><span class="err">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">`</span><span class="n">AdaptiveSparkPlanExec</span><span class="err">`</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">leaf</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="w"> </span><span class="k">If</span><span class="w"> </span><span class="n">inserted</span><span class="p">,</span><span class="w"> </span><span class="ow">all</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">following</span><span class="w"> </span><span class="n">rules</span><span class="w"> </span><span class="n">will</span><span class="w"> </span><span class="n">be</span><span class="w"> </span><span class="k">no</span><span class="o">-</span><span class="n">op</span><span class="w"></span>
+<span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">original</span><span class="w"> </span><span class="k">plan</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">hidden</span><span class="w"> </span><span class="n">behind</span><span class="w"> </span><span class="err">`</span><span class="n">AdaptiveSparkPlanExec</span><span class="err">`</span><span class="p">.</span><span class="w"></span>
+<span class="w"> </span><span class="n">adaptiveExecutionRule</span><span class="p">.</span><span class="n">toSeq</span><span class="w"> </span><span class="o">++</span><span class="w"></span>
+</code></pre></div>
+
+<h3 id="orgapachesparksqlexecutionadaptiveinsertadaptivesparkplan">org.apache.spark.sql.execution.adaptive.InsertAdaptiveSparkPlan<a class="headerlink" href="#orgapachesparksqlexecutionadaptiveinsertadaptivesparkplan" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm">* This rule wraps the query plan with an [[AdaptiveSparkPlanExec]], which executes the query plan</span>
+<span class="cm">* and re-optimize the plan during execution based on runtime data statistics.</span>
+<span class="cm">*</span>
+<span class="cm">* Note that this rule is stateful and thus should not be reused across query executions.</span>
+<span class="cm">*/</span><span class="w"></span>
+<span class="k">case</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="n">InsertAdaptiveSparkPlan</span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="nl">adaptiveExecutionContext</span><span class="p">:</span><span class="w"> </span><span class="n">AdaptiveExecutionContext</span><span class="p">)</span><span class="w"> </span><span class="n">extends</span><span class="w"> </span><span class="k">Rule</span><span class="o">[</span><span class="n">SparkPlan</span><span class="o">]</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+
+<span class="w">  </span><span class="n">override</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">apply</span><span class="p">(</span><span class="k">plan</span><span class="err">:</span><span class="w"> </span><span class="n">SparkPlan</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="n">SparkPlan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">applyInternal</span><span class="p">(</span><span class="k">plan</span><span class="p">,</span><span class="w"> </span><span class="k">false</span><span class="p">)</span><span class="w"></span>
+
+<span class="w">  </span><span class="n">private</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">applyInternal</span><span class="p">(</span><span class="k">plan</span><span class="err">:</span><span class="w"> </span><span class="n">SparkPlan</span><span class="p">,</span><span class="w"> </span><span class="nl">isSubquery</span><span class="p">:</span><span class="w"> </span><span class="k">Boolean</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="n">SparkPlan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">plan</span><span class="w"> </span><span class="k">match</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="err">!</span><span class="n">conf</span><span class="p">.</span><span class="n">adaptiveExecutionEnabled</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">plan</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nl">_</span><span class="p">:</span><span class="w"> </span><span class="n">ExecutedCommandExec</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">plan</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nl">_</span><span class="p">:</span><span class="w"> </span><span class="n">CommandResultExec</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">plan</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nl">c</span><span class="p">:</span><span class="w"> </span><span class="n">DataWritingCommandExec</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply</span><span class="p">(</span><span class="n">c</span><span class="p">.</span><span class="n">child</span><span class="p">))</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nl">c</span><span class="p">:</span><span class="w"> </span><span class="n">V2CommandExec</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">withNewChildren</span><span class="p">(</span><span class="n">c</span><span class="p">.</span><span class="n">children</span><span class="p">.</span><span class="k">map</span><span class="p">(</span><span class="n">apply</span><span class="p">))</span><span class="w"></span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">shouldApplyAQE</span><span class="p">(</span><span class="k">plan</span><span class="p">,</span><span class="w"> </span><span class="n">isSubquery</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"></span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">supportAdaptive</span><span class="p">(</span><span class="k">plan</span><span class="p">))</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">          </span><span class="o">//</span><span class="w"> </span><span class="k">Plan</span><span class="w"> </span><span class="n">sub</span><span class="o">-</span><span class="n">queries</span><span class="w"> </span><span class="n">recursively</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">pass</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">shared</span><span class="w"> </span><span class="n">stage</span><span class="w"> </span><span class="n">cache</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">exchange</span><span class="w"> </span><span class="n">reuse</span><span class="p">.</span><span class="w"></span>
+<span class="w">          </span><span class="o">//</span><span class="w"> </span><span class="n">Fall</span><span class="w"> </span><span class="n">back</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">non</span><span class="o">-</span><span class="n">AQE</span><span class="w"> </span><span class="n">mode</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">AQE</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="n">supported</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="ow">any</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">sub</span><span class="o">-</span><span class="n">queries</span><span class="p">.</span><span class="w"></span>
+<span class="w">          </span><span class="n">val</span><span class="w"> </span><span class="n">subqueryMap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildSubqueryMap</span><span class="p">(</span><span class="k">plan</span><span class="p">)</span><span class="w"></span>
+<span class="w">          </span><span class="n">val</span><span class="w"> </span><span class="n">planSubqueriesRule</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PlanAdaptiveSubqueries</span><span class="p">(</span><span class="n">subqueryMap</span><span class="p">)</span><span class="w"></span>
+<span class="w">          </span><span class="n">val</span><span class="w"> </span><span class="n">preprocessingRules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Seq</span><span class="p">(</span><span class="w"></span>
+<span class="w">            </span><span class="n">planSubqueriesRule</span><span class="p">)</span><span class="w"></span>
+<span class="w">          </span><span class="o">//</span><span class="w"> </span><span class="n">Run</span><span class="w"> </span><span class="n">pre</span><span class="o">-</span><span class="n">processing</span><span class="w"> </span><span class="n">rules</span><span class="p">.</span><span class="w"></span>
+<span class="w">          </span><span class="n">val</span><span class="w"> </span><span class="n">newPlan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdaptiveSparkPlanExec</span><span class="p">.</span><span class="n">applyPhysicalRules</span><span class="p">(</span><span class="k">plan</span><span class="p">,</span><span class="w"> </span><span class="n">preprocessingRules</span><span class="p">)</span><span class="w"></span>
+<span class="w">          </span><span class="n">logDebug</span><span class="p">(</span><span class="n">s</span><span class="ss">&quot;Adaptive execution enabled for plan: $plan&quot;</span><span class="p">)</span><span class="w"></span>
+<span class="w">          </span><span class="n">AdaptiveSparkPlanExec</span><span class="p">(</span><span class="n">newPlan</span><span class="p">,</span><span class="w"> </span><span class="n">adaptiveExecutionContext</span><span class="p">,</span><span class="w"> </span><span class="n">preprocessingRules</span><span class="p">,</span><span class="w"> </span><span class="n">isSubquery</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="err">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">          </span><span class="k">case</span><span class="w"> </span><span class="n">SubqueryAdaptiveNotSupportedException</span><span class="p">(</span><span class="n">subquery</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"></span>
+<span class="w">            </span><span class="n">logWarning</span><span class="p">(</span><span class="n">s</span><span class="ss">&quot;${SQLConf.ADAPTIVE_EXECUTION_ENABLED.key} is enabled &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"></span>
+<span class="w">              </span><span class="n">s</span><span class="ss">&quot;but is not supported for sub-query: $subquery.&quot;</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="k">plan</span><span class="w"></span>
+<span class="w">        </span><span class="err">}</span><span class="w"></span>
+<span class="w">      </span><span class="err">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">logDebug</span><span class="p">(</span><span class="n">s</span><span class="ss">&quot;${SQLConf.ADAPTIVE_EXECUTION_ENABLED.key} is enabled &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"></span>
+<span class="w">          </span><span class="n">s</span><span class="ss">&quot;but is not supported for query: $plan.&quot;</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="k">plan</span><span class="w"></span>
+<span class="w">      </span><span class="err">}</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">plan</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"></span>
+
+<span class="w">  </span><span class="o">//</span><span class="w"> </span><span class="n">AQE</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">only</span><span class="w"> </span><span class="n">useful</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="n">has</span><span class="w"> </span><span class="n">exchanges</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">sub</span><span class="o">-</span><span class="n">queries</span><span class="p">.</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">method</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="k">if</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w"> </span><span class="n">one</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">following</span><span class="w"> </span><span class="n">conditions</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="nl">satisfied</span><span class="p">:</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">ADAPTIVE_EXECUTION_FORCE_APPLY</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">true</span><span class="p">.</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">sub</span><span class="o">-</span><span class="n">query</span><span class="p">.</span><span class="w"> </span><span class="k">When</span><span class="w"> </span><span class="n">this</span><span class="w"> </span><span class="n">happens</span><span class="p">,</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="n">means</span><span class="w"> </span><span class="n">we</span><span class="s1">&#39;ve already decided to</span>
+<span class="s1">  //     apply AQE for the main query and we must continue to do it.</span>
+<span class="s1">  //   - The query contains exchanges.</span>
+<span class="s1">  //   - The query may need to add exchanges. It&#39;</span><span class="n">s</span><span class="w"> </span><span class="n">an</span><span class="w"> </span><span class="n">overkill</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">run</span><span class="w"> </span><span class="err">`</span><span class="n">EnsureRequirements</span><span class="err">`</span><span class="w"> </span><span class="n">here</span><span class="p">,</span><span class="w"> </span><span class="n">so</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w">     </span><span class="n">we</span><span class="w"> </span><span class="n">just</span><span class="w"> </span><span class="k">check</span><span class="w"> </span><span class="err">`</span><span class="n">SparkPlan</span><span class="p">.</span><span class="n">requiredChildDistribution</span><span class="err">`</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">see</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">it</span><span class="err">&#39;</span><span class="n">s</span><span class="w"> </span><span class="n">possible</span><span class="w"> </span><span class="n">that</span><span class="w"> </span><span class="n">the</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w">     </span><span class="n">the</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="n">needs</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="k">add</span><span class="w"> </span><span class="n">exchanges</span><span class="w"> </span><span class="n">later</span><span class="p">.</span><span class="w"></span>
+<span class="w">  </span><span class="o">//</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="k">contains</span><span class="w"> </span><span class="n">sub</span><span class="o">-</span><span class="n">query</span><span class="p">.</span><span class="w"></span>
+<span class="w">  </span><span class="n">private</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">shouldApplyAQE</span><span class="p">(</span><span class="k">plan</span><span class="err">:</span><span class="w"> </span><span class="n">SparkPlan</span><span class="p">,</span><span class="w"> </span><span class="nl">isSubquery</span><span class="p">:</span><span class="w"> </span><span class="k">Boolean</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="k">Boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">conf</span><span class="p">.</span><span class="n">getConf</span><span class="p">(</span><span class="n">SQLConf</span><span class="p">.</span><span class="n">ADAPTIVE_EXECUTION_FORCE_APPLY</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">isSubquery</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">      </span><span class="k">plan</span><span class="p">.</span><span class="ow">exists</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="nl">_</span><span class="p">:</span><span class="w"> </span><span class="n">Exchange</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span><span class="w"></span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="err">!</span><span class="n">p</span><span class="p">.</span><span class="n">requiredChildDistribution</span><span class="p">.</span><span class="n">forall</span><span class="p">(</span><span class="n">_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">UnspecifiedDistribution</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span><span class="w"></span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">expressions</span><span class="p">.</span><span class="ow">exists</span><span class="p">(</span><span class="n">_</span><span class="p">.</span><span class="ow">exists</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">          </span><span class="k">case</span><span class="w"> </span><span class="nl">_</span><span class="p">:</span><span class="w"> </span><span class="n">SubqueryExpression</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span><span class="w"></span>
+<span class="w">          </span><span class="k">case</span><span class="w"> </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">false</span><span class="w"></span>
+<span class="w">        </span><span class="err">}</span><span class="p">)</span><span class="w"></span>
+<span class="w">      </span><span class="err">}</span><span class="w"></span>
+<span class="w">    </span><span class="err">}</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"> </span>
+</code></pre></div>
+
+<h3 id="orgapachesparksqlexecutionadaptiveadaptivesparkplanexec">org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec<a class="headerlink" href="#orgapachesparksqlexecutionadaptiveadaptivesparkplanexec" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>/**
+ * A root node to execute the query plan adaptively. It splits the query plan into independent
+ * stages and executes them in order according to their dependencies. The query stage
+ * materializes its output at the end. When one stage completes, the data statistics of the
+ * materialized output will be used to optimize the remainder of the query.
+ *
+ * To create query stages, we traverse the query tree bottom up. When we hit an exchange node,
+ * and if all the child query stages of this exchange node are materialized, we create a new
+ * query stage for this exchange node. The new stage is then materialized asynchronously once it
+ * is created.
+ *
+ * When one query stage finishes materialization, the rest query is re-optimized and planned based
+ * on the latest statistics provided by all materialized stages. Then we traverse the query plan
+ * again and create more stages if possible. After all stages have been materialized, we execute
+ * the rest of the plan.
+ */
+case class AdaptiveSparkPlanExec(
+    inputPlan: SparkPlan,
+    @transient context: AdaptiveExecutionContext,
+    @transient preprocessingRules: Seq[Rule[SparkPlan]],
+    @transient isSubquery: Boolean,
+    @transient override val supportsColumnar: Boolean = false)
+  extends LeafExecNode {
+
+  override def doExecute(): RDD[InternalRow] = {
+    withFinalPlanUpdate(_.execute())
+  }
+
+  private def withFinalPlanUpdate[T](fun: SparkPlan =&gt; T): T = {
+    val plan = getFinalPhysicalPlan()
+    val result = fun(plan)
+    finalPlanUpdate
+    result
+  }
+
+  private def getFinalPhysicalPlan(): SparkPlan = lock.synchronized {
+    if (isFinalPlan) return currentPhysicalPlan
+
+    // In case of this adaptive plan being executed out of `withActive` scoped functions, e.g.,
+    // `plan.queryExecution.rdd`, we need to set active session here as new plan nodes can be
+    // created in the middle of the execution.
+    context.session.withActive {
+      val executionId = getExecutionId
+      // Use inputPlan logicalLink here in case some top level physical nodes may be removed
+      // during `initialPlan`
+      var currentLogicalPlan = inputPlan.logicalLink.get
+      var result = createQueryStages(currentPhysicalPlan)
+      val events = new LinkedBlockingQueue[StageMaterializationEvent]()
+      val errors = new mutable.ArrayBuffer[Throwable]()
+      var stagesToReplace = Seq.empty[QueryStageExec]
+      while (!result.allChildStagesMaterialized) {
+        currentPhysicalPlan = result.newPlan
+        if (result.newStages.nonEmpty) {
+          stagesToReplace = result.newStages ++ stagesToReplace
+          executionId.foreach(onUpdatePlan(_, result.newStages.map(_.plan)))
+
+          // SPARK-33933: we should submit tasks of broadcast stages first, to avoid waiting
+          // for tasks to be scheduled and leading to broadcast timeout.
+          // This partial fix only guarantees the start of materialization for BroadcastQueryStage
+          // is prior to others, but because the submission of collect job for broadcasting is
+          // running in another thread, the issue is not completely resolved.
+          val reorderedNewStages = result.newStages
+            .sortWith {
+              case (_: BroadcastQueryStageExec, _: BroadcastQueryStageExec) =&gt; false
+              case (_: BroadcastQueryStageExec, _) =&gt; true
+              case _ =&gt; false
+            }
+
+          // Start materialization of all new stages and fail fast if any stages failed eagerly
+          reorderedNewStages.foreach { stage =&gt;
+            try {
+              stage.materialize().onComplete { res =&gt;
+                if (res.isSuccess) {
+                  events.offer(StageSuccess(stage, res.get))
+                } else {
+                  events.offer(StageFailure(stage, res.failed.get))
+                }
+              }(AdaptiveSparkPlanExec.executionContext)
+            } catch {
+              case e: Throwable =&gt;
+                cleanUpAndThrowException(Seq(e), Some(stage.id))
+            }
+          }
+        }
+
+        // Wait on the next completed stage, which indicates new stats are available and probably
+        // new stages can be created. There might be other stages that finish at around the same
+        // time, so we process those stages too in order to reduce re-planning.
+        val nextMsg = events.take()
+        val rem = new util.ArrayList[StageMaterializationEvent]()
+        events.drainTo(rem)
+        (Seq(nextMsg) ++ rem.asScala).foreach {
+          case StageSuccess(stage, res) =&gt;
+            stage.resultOption.set(Some(res))
+          case StageFailure(stage, ex) =&gt;
+            errors.append(ex)
+        }
+
+        // In case of errors, we cancel all running stages and throw exception.
+        if (errors.nonEmpty) {
+          cleanUpAndThrowException(errors.toSeq, None)
+        }
+
+        // Try re-optimizing and re-planning. Adopt the new plan if its cost is equal to or less
+        // than that of the current plan; otherwise keep the current physical plan together with
+        // the current logical plan since the physical plan&#39;s logical links point to the logical
+        // plan it has originated from.
+        // Meanwhile, we keep a list of the query stages that have been created since last plan
+        // update, which stands for the &quot;semantic gap&quot; between the current logical and physical
+        // plans. And each time before re-planning, we replace the corresponding nodes in the
+        // current logical plan with logical query stages to make it semantically in sync with
+        // the current physical plan. Once a new plan is adopted and both logical and physical
+        // plans are updated, we can clear the query stage list because at this point the two plans
+        // are semantically and physically in sync again.
+        val logicalPlan = replaceWithQueryStagesInLogicalPlan(currentLogicalPlan, stagesToReplace)
+        val afterReOptimize = reOptimize(logicalPlan)
+        if (afterReOptimize.isDefined) {
+          val (newPhysicalPlan, newLogicalPlan) = afterReOptimize.get
+          val origCost = costEvaluator.evaluateCost(currentPhysicalPlan)
+          val newCost = costEvaluator.evaluateCost(newPhysicalPlan)
+          if (newCost <span class="nt">&lt; origCost</span> <span class="err">||</span>
+            <span class="err">(</span><span class="na">newCost =</span><span class="s">=</span> <span class="err">origCost</span> <span class="err">&amp;&amp;</span> <span class="err">currentPhysicalPlan</span> <span class="err">!=</span> <span class="err">newPhysicalPlan))</span> <span class="err">{</span>
+            <span class="err">logOnLevel(&quot;Plan</span> <span class="err">changed:\n&quot;</span> <span class="err">+</span>
+              <span class="err">sideBySide(currentPhysicalPlan.treeString,</span> <span class="err">newPhysicalPlan.treeString).mkString(&quot;\n&quot;))</span>
+            <span class="err">cleanUpTempTags(newPhysicalPlan)</span>
+            <span class="na">currentPhysicalPlan =</span> <span class="s">newPhysicalPlan</span>
+            <span class="na">currentLogicalPlan =</span> <span class="s">newLogicalPlan</span>
+            <span class="na">stagesToReplace =</span> <span class="s">Seq.empty[QueryStageExec]</span>
+          <span class="err">}</span>
+        <span class="err">}</span>
+        <span class="err">//</span> <span class="err">Now</span> <span class="err">that</span> <span class="err">some</span> <span class="err">stages</span> <span class="err">have</span> <span class="err">finished,</span> <span class="err">we</span> <span class="err">can</span> <span class="err">try</span> <span class="err">creating</span> <span class="err">new</span> <span class="err">stages.</span>
+        <span class="na">result =</span> <span class="s">createQueryStages(currentPhysicalPlan)</span>
+      <span class="err">}</span>
+
+      <span class="err">//</span> <span class="err">Run</span> <span class="err">the</span> <span class="err">final</span> <span class="err">plan</span> <span class="err">when</span> <span class="err">there&#39;s</span> <span class="err">no</span> <span class="err">more</span> <span class="err">unfinished</span> <span class="err">stages.</span>
+      <span class="na">currentPhysicalPlan =</span> <span class="s">applyPhysicalRules(</span>
+        <span class="err">optimizeQueryStage(result.newPlan,</span> <span class="na">isFinalStage =</span> <span class="s">true),</span>
+        <span class="err">postStageCreationRules(supportsColumnar),</span>
+        <span class="err">Some((planChangeLogger,</span> <span class="err">&quot;AQE</span> <span class="err">Post</span> <span class="err">Stage</span> <span class="err">Creation&quot;)))</span>
+      <span class="na">isFinalPlan =</span> <span class="s">true</span>
+      <span class="err">executionId.foreach(onUpdatePlan(_,</span> <span class="err">Seq(currentPhysicalPlan)))</span>
+      <span class="err">currentPhysicalPlan</span>
+    <span class="err">}</span>
+  <span class="err">}</span>
+
+
+  <span class="err">/**</span>
+   <span class="err">*</span> <span class="err">This</span> <span class="err">method</span> <span class="err">is</span> <span class="err">called</span> <span class="err">recursively</span> <span class="err">to</span> <span class="err">traverse</span> <span class="err">the</span> <span class="err">plan</span> <span class="err">tree</span> <span class="err">bottom-up</span> <span class="err">and</span> <span class="err">create</span> <span class="err">a</span> <span class="err">new</span> <span class="err">query</span>
+   <span class="err">*</span> <span class="err">stage</span> <span class="err">or</span> <span class="err">try</span> <span class="err">reusing</span> <span class="err">an</span> <span class="err">existing</span> <span class="err">stage</span> <span class="err">if</span> <span class="err">the</span> <span class="err">current</span> <span class="err">node</span> <span class="err">is</span> <span class="err">an</span> <span class="err">[[Exchange]]</span> <span class="err">node</span> <span class="err">and</span> <span class="err">all</span> <span class="err">of</span>
+   <span class="err">*</span> <span class="err">its</span> <span class="err">child</span> <span class="err">stages</span> <span class="err">have</span> <span class="err">been</span> <span class="err">materialized.</span>
+   <span class="err">*</span>
+   <span class="err">*</span> <span class="err">With</span> <span class="err">each</span> <span class="err">call,</span> <span class="err">it</span> <span class="err">returns:</span>
+   <span class="err">*</span> <span class="err">1)</span> <span class="err">The</span> <span class="err">new</span> <span class="err">plan</span> <span class="err">replaced</span> <span class="err">with</span> <span class="err">[[QueryStageExec]]</span> <span class="err">nodes</span> <span class="err">where</span> <span class="err">new</span> <span class="err">stages</span> <span class="err">are</span> <span class="err">created.</span>
+   <span class="err">*</span> <span class="err">2)</span> <span class="err">Whether</span> <span class="err">the</span> <span class="err">child</span> <span class="err">query</span> <span class="err">stages</span> <span class="err">(if</span> <span class="err">any)</span> <span class="err">of</span> <span class="err">the</span> <span class="err">current</span> <span class="err">node</span> <span class="err">have</span> <span class="err">all</span> <span class="err">been</span> <span class="err">materialized.</span>
+   <span class="err">*</span> <span class="err">3)</span> <span class="err">A</span> <span class="err">list</span> <span class="err">of</span> <span class="err">the</span> <span class="err">new</span> <span class="err">query</span> <span class="err">stages</span> <span class="err">that</span> <span class="err">have</span> <span class="err">been</span> <span class="err">created.</span>
+   <span class="err">*/</span>
+  <span class="err">private</span> <span class="err">def</span> <span class="err">createQueryStages(plan:</span> <span class="err">SparkPlan):</span> <span class="na">CreateStageResult =</span> <span class="s">plan</span> <span class="err">match</span> <span class="err">{</span>
+    <span class="err">case</span> <span class="err">e:</span> <span class="na">Exchange =</span><span class="err">&gt;</span>
+      <span class="s">//</span> <span class="err">First</span> <span class="err">have</span> <span class="err">a</span> <span class="err">quick</span> <span class="err">check</span> <span class="err">in</span> <span class="err">the</span> <span class="err">`stageCache`</span> <span class="err">without</span> <span class="err">having</span> <span class="err">to</span> <span class="err">traverse</span> <span class="err">down</span> <span class="err">the</span> <span class="err">node.</span>
+      <span class="err">context.stageCache.get(e.canonicalized)</span> <span class="err">match</span> <span class="err">{</span>
+        <span class="err">case</span> <span class="err">Some(existingStage)</span> <span class="err">if</span> <span class="na">conf.exchangeReuseEnabled =</span><span class="err">&gt;</span>
+          <span class="s">val</span> <span class="na">stage =</span> <span class="s">reuseQueryStage(existingStage,</span> <span class="err">e)</span>
+          <span class="err">val</span> <span class="na">isMaterialized =</span> <span class="s">stage.isMaterialized</span>
+          <span class="err">CreateStageResult(</span>
+            <span class="na">newPlan =</span> <span class="s">stage,</span>
+            <span class="na">allChildStagesMaterialized =</span> <span class="s">isMaterialized,</span>
+            <span class="na">newStages =</span> <span class="s">if</span> <span class="err">(isMaterialized)</span> <span class="err">Seq.empty</span> <span class="err">else</span> <span class="err">Seq(stage))</span>
+
+        <span class="err">case</span> <span class="na">_ =</span><span class="err">&gt;</span>
+          <span class="s">val</span> <span class="na">result =</span> <span class="s">createQueryStages(e.child)</span>
+          <span class="err">val</span> <span class="na">newPlan =</span> <span class="s">e.withNewChildren(Seq(result.newPlan)).asInstanceOf[Exchange]</span>
+          <span class="err">//</span> <span class="err">Create</span> <span class="err">a</span> <span class="err">query</span> <span class="err">stage</span> <span class="err">only</span> <span class="err">when</span> <span class="err">all</span> <span class="err">the</span> <span class="err">child</span> <span class="err">query</span> <span class="err">stages</span> <span class="err">are</span> <span class="err">ready.</span>
+          <span class="err">if</span> <span class="err">(result.allChildStagesMaterialized)</span> <span class="err">{</span>
+            <span class="err">var</span> <span class="na">newStage =</span> <span class="s">newQueryStage(newPlan)</span>
+            <span class="err">if</span> <span class="err">(conf.exchangeReuseEnabled)</span> <span class="err">{</span>
+              <span class="err">//</span> <span class="err">Check</span> <span class="err">the</span> <span class="err">`stageCache`</span> <span class="err">again</span> <span class="err">for</span> <span class="err">reuse.</span> <span class="err">If</span> <span class="err">a</span> <span class="err">match</span> <span class="err">is</span> <span class="err">found,</span> <span class="err">ditch</span> <span class="err">the</span> <span class="err">new</span> <span class="err">stage</span>
+              <span class="err">//</span> <span class="err">and</span> <span class="err">reuse</span> <span class="err">the</span> <span class="err">existing</span> <span class="err">stage</span> <span class="err">found</span> <span class="err">in</span> <span class="err">the</span> <span class="err">`stageCache`,</span> <span class="err">otherwise</span> <span class="err">update</span> <span class="err">the</span>
+              <span class="err">//</span> <span class="err">`stageCache`</span> <span class="err">with</span> <span class="err">the</span> <span class="err">new</span> <span class="err">stage.</span>
+              <span class="err">val</span> <span class="na">queryStage =</span> <span class="s">context.stageCache.getOrElseUpdate(</span>
+                <span class="err">newStage.plan.canonicalized,</span> <span class="err">newStage)</span>
+              <span class="err">if</span> <span class="err">(queryStage.ne(newStage))</span> <span class="err">{</span>
+                <span class="na">newStage =</span> <span class="s">reuseQueryStage(queryStage,</span> <span class="err">e)</span>
+              <span class="err">}</span>
+            <span class="err">}</span>
+            <span class="err">val</span> <span class="na">isMaterialized =</span> <span class="s">newStage.isMaterialized</span>
+            <span class="err">CreateStageResult(</span>
+              <span class="na">newPlan =</span> <span class="s">newStage,</span>
+              <span class="na">allChildStagesMaterialized =</span> <span class="s">isMaterialized,</span>
+              <span class="na">newStages =</span> <span class="s">if</span> <span class="err">(isMaterialized)</span> <span class="err">Seq.empty</span> <span class="err">else</span> <span class="err">Seq(newStage))</span>
+          <span class="err">}</span> <span class="err">else</span> <span class="err">{</span>
+            <span class="err">CreateStageResult(</span><span class="na">newPlan =</span> <span class="s">newPlan,</span>
+              <span class="na">allChildStagesMaterialized =</span> <span class="s">false,</span> <span class="na">newStages =</span> <span class="s">result.newStages)</span>
+          <span class="err">}</span>
+      <span class="err">}</span>
+
+    <span class="err">case</span> <span class="err">q:</span> <span class="na">QueryStageExec =</span><span class="err">&gt;</span>
+      <span class="s">CreateStageResult(newPlan</span> <span class="err">=</span> <span class="err">q,</span>
+        <span class="na">allChildStagesMaterialized =</span> <span class="s">q.isMaterialized,</span> <span class="na">newStages =</span> <span class="s">Seq.empty)</span>
+
+    <span class="err">case</span> <span class="na">_ =</span><span class="err">&gt;</span>
+      <span class="s">if</span> <span class="err">(plan.children.isEmpty)</span> <span class="err">{</span>
+        <span class="err">CreateStageResult(</span><span class="na">newPlan =</span> <span class="s">plan,</span> <span class="na">allChildStagesMaterialized =</span> <span class="s">true,</span> <span class="na">newStages =</span> <span class="s">Seq.empty)</span>
+      <span class="err">}</span> <span class="err">else</span> <span class="err">{</span>
+        <span class="err">val</span> <span class="na">results =</span> <span class="s">plan.children.map(createQueryStages)</span>
+        <span class="err">CreateStageResult(</span>
+          <span class="na">newPlan =</span> <span class="s">plan.withNewChildren(results.map(_.newPlan)),</span>
+          <span class="na">allChildStagesMaterialized =</span> <span class="s">results.forall(_.allChildStagesMaterialized),</span>
+          <span class="na">newStages =</span> <span class="s">results.flatMap(_.newStages))</span>
+      <span class="err">}</span>
+  <span class="err">}</span>
+
+  <span class="err">private</span> <span class="err">def</span> <span class="err">newQueryStage(e:</span> <span class="err">Exchange):</span> <span class="na">QueryStageExec =</span> <span class="s">{</span>
+    <span class="err">val</span> <span class="na">optimizedPlan =</span> <span class="s">optimizeQueryStage(e.child,</span> <span class="na">isFinalStage =</span> <span class="s">false)</span>
+    <span class="err">val</span> <span class="na">queryStage =</span> <span class="s">e</span> <span class="err">match</span> <span class="err">{</span>
+      <span class="err">case</span> <span class="err">s:</span> <span class="na">ShuffleExchangeLike =</span><span class="err">&gt;</span>
+        <span class="s">val</span> <span class="na">newShuffle =</span> <span class="s">applyPhysicalRules(</span>
+          <span class="err">s.withNewChildren(Seq(optimizedPlan)),</span>
+          <span class="err">postStageCreationRules(</span><span class="na">outputsColumnar =</span> <span class="s">s.supportsColumnar),</span>
+          <span class="err">Some((planChangeLogger,</span> <span class="err">&quot;AQE</span> <span class="err">Post</span> <span class="err">Stage</span> <span class="err">Creation&quot;)))</span>
+        <span class="err">if</span> <span class="err">(!newShuffle.isInstanceOf[ShuffleExchangeLike])</span> <span class="err">{</span>
+          <span class="err">throw</span> <span class="err">new</span> <span class="err">IllegalStateException(</span>
+            <span class="err">&quot;Custom</span> <span class="err">columnar</span> <span class="err">rules</span> <span class="err">cannot</span> <span class="err">transform</span> <span class="err">shuffle</span> <span class="err">node</span> <span class="err">to</span> <span class="err">something</span> <span class="err">else.&quot;)</span>
+        <span class="err">}</span>
+        <span class="err">ShuffleQueryStageExec(currentStageId,</span> <span class="err">newShuffle,</span> <span class="err">s.canonicalized)</span>
+      <span class="err">case</span> <span class="err">b:</span> <span class="na">BroadcastExchangeLike =</span><span class="err">&gt;</span>
+        <span class="s">val</span> <span class="na">newBroadcast =</span> <span class="s">applyPhysicalRules(</span>
+          <span class="err">b.withNewChildren(Seq(optimizedPlan)),</span>
+          <span class="err">postStageCreationRules(</span><span class="na">outputsColumnar =</span> <span class="s">b.supportsColumnar),</span>
+          <span class="err">Some((planChangeLogger,</span> <span class="err">&quot;AQE</span> <span class="err">Post</span> <span class="err">Stage</span> <span class="err">Creation&quot;)))</span>
+        <span class="err">if</span> <span class="err">(!newBroadcast.isInstanceOf[BroadcastExchangeLike])</span> <span class="err">{</span>
+          <span class="err">throw</span> <span class="err">new</span> <span class="err">IllegalStateException(</span>
+            <span class="err">&quot;Custom</span> <span class="err">columnar</span> <span class="err">rules</span> <span class="err">cannot</span> <span class="err">transform</span> <span class="err">broadcast</span> <span class="err">node</span> <span class="err">to</span> <span class="err">something</span> <span class="err">else.&quot;)</span>
+        <span class="err">}</span>
+        <span class="err">BroadcastQueryStageExec(currentStageId,</span> <span class="err">newBroadcast,</span> <span class="err">b.canonicalized)</span>
+    <span class="err">}</span>
+    <span class="err">currentStageId</span> <span class="err">+=</span> <span class="err">1</span>
+    <span class="err">setLogicalLinkForNewQueryStage(queryStage,</span> <span class="err">e)</span>
+    <span class="err">queryStage</span>
+  <span class="err">}</span>
+</code></pre></div>
+
+<p><strong>rules</strong></p>
+<div class="codehilite"><pre><span></span><code>  @transient private val costEvaluator =
+    conf.getConf(SQLConf.ADAPTIVE_CUSTOM_COST_EVALUATOR_CLASS) match {
+      case Some(className) =&gt; CostEvaluator.instantiate(className, session.sparkContext.getConf)
+      case _ =&gt; SimpleCostEvaluator(conf.getConf(SQLConf.ADAPTIVE_FORCE_OPTIMIZE_SKEWED_JOIN))
+    }
+
+  // A list of physical plan rules to be applied before creation of query stages. The physical
+  // plan should reach a final status of query stages (i.e., no more addition or removal of
+  // Exchange nodes) after running these rules.
+  @transient private val queryStagePreparationRules: Seq[Rule[SparkPlan]] = {
+    // For cases like `df.repartition(a, b).select(c)`, there is no distribution requirement for
+    // the final plan, but we do need to respect the user-specified repartition. Here we ask
+    // `EnsureRequirements` to not optimize out the user-specified repartition-by-col to work
+    // around this case.
+    val ensureRequirements =
+      EnsureRequirements(requiredDistribution.isDefined, requiredDistribution)
+    Seq(
+      RemoveRedundantProjects,
+      ensureRequirements,
+      ValidateSparkPlan,
+      ReplaceHashWithSortAgg,
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      OptimizeSkewedJoin(ensureRequirements)
+    ) ++ context.session.sessionState.adaptiveRulesHolder.queryStagePrepRules
+  }
+
+  // A list of physical optimizer rules to be applied to a new stage before its execution. These
+  // optimizations should be stage-independent.
+  @transient private val queryStageOptimizerRules: Seq[Rule[SparkPlan]] = Seq(
+    PlanAdaptiveDynamicPruningFilters(this),
+    ReuseAdaptiveSubquery(context.subqueryCache),
+    OptimizeSkewInRebalancePartitions,
+    CoalesceShufflePartitions(context.session),
+    // `OptimizeShuffleWithLocalRead` needs to make use of &#39;AQEShuffleReadExec.partitionSpecs&#39;
+    // added by `CoalesceShufflePartitions`, and must be executed after it.
+    OptimizeShuffleWithLocalRead
+  )
+
+  // This rule is stateful as it maintains the codegen stage ID. We can&#39;t create a fresh one every
+  // time and need to keep it in a variable.
+  @transient private val collapseCodegenStagesRule: Rule[SparkPlan] =
+    CollapseCodegenStages()
+
+  // A list of physical optimizer rules to be applied right after a new stage is created. The input
+  // plan to these rules has exchange as its root node.
+  private def postStageCreationRules(outputsColumnar: Boolean) = Seq(
+    ApplyColumnarRulesAndInsertTransitions(
+      context.session.sessionState.columnarRules, outputsColumnar),
+    collapseCodegenStagesRule
+  )
+
+  @transient val initialPlan = context.session.withActive {
+    applyPhysicalRules(
+      inputPlan, queryStagePreparationRules, Some((planChangeLogger, &quot;AQE Preparations&quot;)))
+  }
+
+  @volatile private var currentPhysicalPlan = initialPlan
+
+  // The logical plan optimizer for re-optimizing the current logical plan.
+  @transient private val optimizer = new AQEOptimizer(conf,
+    session.sessionState.adaptiveRulesHolder.runtimeOptimizerRules)
+
+  private def optimizeQueryStage(plan: SparkPlan, isFinalStage: Boolean): SparkPlan = {
+    val optimized = queryStageOptimizerRules.foldLeft(plan) { case (latestPlan, rule) =&gt;
+      val applied = rule.apply(latestPlan)
+      val result = rule match {
+        case _: AQEShuffleReadRule if !applied.fastEquals(latestPlan) =&gt;
+          val distribution = if (isFinalStage) {
+            // If `requiredDistribution` is None, it means `EnsureRequirements` will not optimize
+            // out the user-specified repartition, thus we don&#39;t have a distribution requirement
+            // for the final plan.
+            requiredDistribution.getOrElse(UnspecifiedDistribution)
+          } else {
+            UnspecifiedDistribution
+          }
+          if (ValidateRequirements.validate(applied, distribution)) {
+            applied
+          } else {
+            logDebug(s&quot;Rule ${rule.ruleName} is not applied as it breaks the &quot; +
+              &quot;distribution requirement of the query plan.&quot;)
+            latestPlan
+          }
+        case _ =&gt; applied
+      }
+      planChangeLogger.logRule(rule.ruleName, latestPlan, result)
+      result
+    }
+    planChangeLogger.logBatch(&quot;AQE Query Stage Optimization&quot;, plan, optimized)
+    optimized
+  }
+
+  /**
+   * Re-optimize and run physical planning on the current logical plan based on the latest stats.
+   */
+  private def reOptimize(logicalPlan: LogicalPlan): Option[(SparkPlan, LogicalPlan)] = {
+    try {
+      logicalPlan.invalidateStatsCache()
+      val optimized = optimizer.execute(logicalPlan)
+      val sparkPlan = context.session.sessionState.planner.plan(ReturnAnswer(optimized)).next()
+      val newPlan = applyPhysicalRules(
+        sparkPlan,
+        preprocessingRules ++ queryStagePreparationRules,
+        Some((planChangeLogger, &quot;AQE Replanning&quot;)))
+
+      // When both enabling AQE and DPP, `PlanAdaptiveDynamicPruningFilters` rule will
+      // add the `BroadcastExchangeExec` node manually in the DPP subquery,
+      // not through `EnsureRequirements` rule. Therefore, when the DPP subquery is complicated
+      // and need to be re-optimized, AQE also need to manually insert the `BroadcastExchangeExec`
+      // node to prevent the loss of the `BroadcastExchangeExec` node in DPP subquery.
+      // Here, we also need to avoid to insert the `BroadcastExchangeExec` node when the newPlan is
+      // already the `BroadcastExchangeExec` plan after apply the `LogicalQueryStageStrategy` rule.
+      val finalPlan = inputPlan match {
+        case b: BroadcastExchangeLike
+          if (!newPlan.isInstanceOf[BroadcastExchangeLike]) =&gt; b.withNewChildren(Seq(newPlan))
+        case _ =&gt; newPlan
+      }
+
+      Some((finalPlan, optimized))
+    } catch {
+      case e: InvalidAQEPlanException[_] =&gt;
+        logOnLevel(s&quot;Re-optimize - ${e.getMessage()}:\n${e.plan}&quot;)
+        None
+    }
+  }
+</code></pre></div>
+
+<h3 id="orgapachesparksqlexecutionadaptivequerystageexec">org.apache.spark.sql.execution.adaptive.QueryStageExec<a class="headerlink" href="#orgapachesparksqlexecutionadaptivequerystageexec" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * A query stage is an independent subgraph of the query plan. Query stage materializes its output</span>
+<span class="cm"> * before proceeding with further operators of the query plan. The data statistics of the</span>
+<span class="cm"> * materialized output can be used to optimize subsequent query stages.</span>
+<span class="cm"> *</span>
+<span class="cm"> * There are 2 kinds of query stages:</span>
+<span class="cm"> *   1. Shuffle query stage. This stage materializes its output to shuffle files, and Spark launches</span>
+<span class="cm"> *      another job to execute the further operators.</span>
+<span class="cm"> *   2. Broadcast query stage. This stage materializes its output to an array in driver JVM. Spark</span>
+<span class="cm"> *      broadcasts the array before executing the further operators.</span>
+<span class="cm"> */</span><span class="w"></span>
+<span class="n">abstract</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="n">QueryStageExec</span><span class="w"> </span><span class="n">extends</span><span class="w"> </span><span class="n">LeafExecNode</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+
+<span class="w">  </span><span class="nv">@transient</span><span class="w"></span>
+<span class="w">  </span><span class="nv">@volatile</span><span class="w"></span>
+<span class="w">  </span><span class="n">protected</span><span class="w"> </span><span class="nf">var</span><span class="w"> </span><span class="n">_resultOption</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AtomicReference</span><span class="o">[</span><span class="n">Option[Any</span><span class="o">]</span><span class="err">]</span><span class="p">(</span><span class="k">None</span><span class="p">)</span><span class="w"></span>
+
+<span class="w">  </span><span class="n">private</span><span class="o">[</span><span class="n">adaptive</span><span class="o">]</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="nl">resultOption</span><span class="p">:</span><span class="w"> </span><span class="n">AtomicReference</span><span class="o">[</span><span class="n">Option[Any</span><span class="o">]</span><span class="err">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_resultOption</span><span class="w"></span>
+<span class="w">  </span><span class="n">def</span><span class="w"> </span><span class="nl">isMaterialized</span><span class="p">:</span><span class="w"> </span><span class="k">Boolean</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resultOption</span><span class="p">.</span><span class="k">get</span><span class="p">().</span><span class="n">isDefined</span><span class="w"></span>
+
+<span class="w">  </span><span class="cm">/**</span>
+<span class="cm">   * Compute the statistics of the query stage if executed, otherwise None.</span>
+<span class="cm">   */</span><span class="w"></span>
+<span class="w">  </span><span class="n">def</span><span class="w"> </span><span class="n">computeStats</span><span class="p">()</span><span class="err">:</span><span class="w"> </span><span class="k">Option</span><span class="o">[</span><span class="n">Statistics</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">isMaterialized</span><span class="p">)</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">val</span><span class="w"> </span><span class="n">runtimeStats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getRuntimeStatistics</span><span class="w"></span>
+<span class="w">    </span><span class="n">val</span><span class="w"> </span><span class="n">dataSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runtimeStats</span><span class="p">.</span><span class="n">sizeInBytes</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="n">val</span><span class="w"> </span><span class="n">numOutputRows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runtimeStats</span><span class="p">.</span><span class="k">rowCount</span><span class="p">.</span><span class="k">map</span><span class="p">(</span><span class="n">_</span><span class="p">.</span><span class="nf">max</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span><span class="w"></span>
+<span class="w">    </span><span class="ow">Some</span><span class="p">(</span><span class="k">Statistics</span><span class="p">(</span><span class="n">dataSize</span><span class="p">,</span><span class="w"> </span><span class="n">numOutputRows</span><span class="p">,</span><span class="w"> </span><span class="n">isRuntime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">))</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">None</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"></span>
+
+
+<span class="w">  </span><span class="cm">/**</span>
+<span class="cm">   * Materialize this query stage, to prepare for the execution, like submitting map stages,</span>
+<span class="cm">   * broadcasting data, etc. The caller side can use the returned [[Future]] to wait until this</span>
+<span class="cm">   * stage is ready.</span>
+<span class="cm">   */</span><span class="w"></span>
+<span class="w">  </span><span class="n">def</span><span class="w"> </span><span class="n">doMaterialize</span><span class="p">()</span><span class="err">:</span><span class="w"> </span><span class="n">Future</span><span class="o">[</span><span class="n">Any</span><span class="o">]</span><span class="w"></span>
+
+<span class="w">  </span><span class="cm">/**</span>
+<span class="cm">   * Materialize this query stage, to prepare for the execution, like submitting map stages,</span>
+<span class="cm">   * broadcasting data, etc. The caller side can use the returned [[Future]] to wait until this</span>
+<span class="cm">   * stage is ready.</span>
+<span class="cm">   */</span><span class="w"></span>
+<span class="w">  </span><span class="n">final</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">materialize</span><span class="p">()</span><span class="err">:</span><span class="w"> </span><span class="n">Future</span><span class="o">[</span><span class="n">Any</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">{</span><span class="w">  </span><span class="o">&lt;==</span><span class="w"> </span><span class="k">called</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">org</span><span class="p">.</span><span class="n">apache</span><span class="p">.</span><span class="n">spark</span><span class="p">.</span><span class="k">sql</span><span class="p">.</span><span class="n">execution</span><span class="p">.</span><span class="n">adaptive</span><span class="p">.</span><span class="n">AdaptiveSparkPlanExec#getFinalPhysicalPlan</span><span class="w"></span>
+<span class="w">    </span><span class="n">logDebug</span><span class="p">(</span><span class="n">s</span><span class="ss">&quot;Materialize query stage ${this.getClass.getSimpleName}: $id&quot;</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="n">doMaterialize</span><span class="p">()</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"></span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>/**
+ * A shuffle query stage whose child is a [[ShuffleExchangeLike]] or [[ReusedExchangeExec]].
+ *
+ * @param id the query stage id.
+ * @param plan the underlying plan.
+ * @param _canonicalized the canonicalized plan before applying query stage optimizer rules.
+ */
+case class ShuffleQueryStageExec(
+    override val id: Int,
+    override val plan: SparkPlan,
+    override val _canonicalized: SparkPlan) extends QueryStageExec {
+
+  @transient val shuffle = plan match {
+    case s: ShuffleExchangeLike =&gt; s
+    case ReusedExchangeExec(_, s: ShuffleExchangeLike) =&gt; s
+    case _ =&gt;
+      throw new IllegalStateException(s&quot;wrong plan for shuffle stage:\n ${plan.treeString}&quot;)
+  }
+
+  @transient private lazy val shuffleFuture = shuffle.submitShuffleJob
+
+  override def doMaterialize(): Future[Any] = shuffleFuture
+
+
+  override def getRuntimeStatistics: Statistics = shuffle.runtimeStatistics
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>/**
+ * A broadcast query stage whose child is a [[BroadcastExchangeLike]] or [[ReusedExchangeExec]].
+ *
+ * @param id the query stage id.
+ * @param plan the underlying plan.
+ * @param _canonicalized the canonicalized plan before applying query stage optimizer rules.
+ */
+case class BroadcastQueryStageExec(
+    override val id: Int,
+    override val plan: SparkPlan,
+    override val _canonicalized: SparkPlan) extends QueryStageExec {
+
+  @transient val broadcast = plan match {
+    case b: BroadcastExchangeLike =&gt; b
+    case ReusedExchangeExec(_, b: BroadcastExchangeLike) =&gt; b
+    case _ =&gt;
+      throw new IllegalStateException(s&quot;wrong plan for broadcast stage:\n ${plan.treeString}&quot;)
+  }
+
+  override def doMaterialize(): Future[Any] = {
+    broadcast.submitBroadcastJob
+  }
+
+  override def getRuntimeStatistics: Statistics = broadcast.runtimeStatistics
+</code></pre></div>
+
+<h3 id="reusequerystage">reuseQueryStage<a class="headerlink" href="#reusequerystage" title="Permanent link">&para;</a></h3>
+<p>org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#createQueryStages =&gt; reuseQueryStage  </p>
+<p>org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#reuseQueryStage</p>
+<div class="codehilite"><pre><span></span><code><span class="err">  private def reuseQueryStage(existing: QueryStageExec, exchange: Exchange): QueryStageExec = {</span>
+<span class="err">    val queryStage = existing.newReuseInstance(currentStageId, exchange.output)</span>
+<span class="err">    currentStageId += 1</span>
+<span class="err">    setLogicalLinkForNewQueryStage(queryStage, exchange)</span>
+<span class="err">    queryStage</span>
+<span class="err">  }</span>
+</code></pre></div>
+
+<p>org.apache.spark.sql.execution.adaptive.BroadcastQueryStageExec#newReuseInstance</p>
+<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="n">override</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">newReuseInstance</span><span class="p">(</span><span class="nl">newStageId</span><span class="p">:</span><span class="w"> </span><span class="nc">Int</span><span class="p">,</span><span class="w"> </span><span class="nl">newOutput</span><span class="p">:</span><span class="w"> </span><span class="n">Seq</span><span class="o">[</span><span class="n">Attribute</span><span class="o">]</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="n">QueryStageExec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">val</span><span class="w"> </span><span class="n">reuse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BroadcastQueryStageExec</span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">newStageId</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="n">ReusedExchangeExec</span><span class="p">(</span><span class="n">newOutput</span><span class="p">,</span><span class="w"> </span><span class="n">broadcast</span><span class="p">),</span><span class="w"></span>
+<span class="w">      </span><span class="n">_canonicalized</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="n">reuse</span><span class="p">.</span><span class="n">_resultOption</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">this</span><span class="p">.</span><span class="n">_resultOption</span><span class="w"></span>
+<span class="w">    </span><span class="n">reuse</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"></span>
+</code></pre></div>
+
+<p>org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec#newReuseInstance</p>
+<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="n">override</span><span class="w"> </span><span class="n">def</span><span class="w"> </span><span class="n">newReuseInstance</span><span class="p">(</span><span class="nl">newStageId</span><span class="p">:</span><span class="w"> </span><span class="nc">Int</span><span class="p">,</span><span class="w"> </span><span class="nl">newOutput</span><span class="p">:</span><span class="w"> </span><span class="n">Seq</span><span class="o">[</span><span class="n">Attribute</span><span class="o">]</span><span class="p">)</span><span class="err">:</span><span class="w"> </span><span class="n">QueryStageExec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">val</span><span class="w"> </span><span class="n">reuse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ShuffleQueryStageExec</span><span class="p">(</span><span class="w"></span>
+<span class="w">      </span><span class="n">newStageId</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="n">ReusedExchangeExec</span><span class="p">(</span><span class="n">newOutput</span><span class="p">,</span><span class="w"> </span><span class="n">shuffle</span><span class="p">),</span><span class="w"></span>
+<span class="w">      </span><span class="n">_canonicalized</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="n">reuse</span><span class="p">.</span><span class="n">_resultOption</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">this</span><span class="p">.</span><span class="n">_resultOption</span><span class="w"></span>
+<span class="w">    </span><span class="n">reuse</span><span class="w"></span>
+<span class="w">  </span><span class="err">}</span><span class="w"></span>
+</code></pre></div></div>
             </div>
         </div>
 
