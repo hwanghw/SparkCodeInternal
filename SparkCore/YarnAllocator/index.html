@@ -7,15 +7,15 @@
         
         
         
-        <link rel="shortcut icon" href="/img/favicon.ico">
-        <title>SparkCodeInternal</title>
-        <link href="/css/bootstrap.min.css" rel="stylesheet">
-        <link href="/css/font-awesome.min.css" rel="stylesheet">
-        <link href="/css/base.css" rel="stylesheet">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>YarnAllocator - SparkCodeInternal</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
 
-        <script src="/js/jquery-1.10.2.min.js" defer></script>
-        <script src="/js/bootstrap.min.js" defer></script>
+        <script src="../../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../../js/bootstrap.min.js" defer></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
         <script>hljs.initHighlightingOnLoad();</script> 
     </head>
@@ -23,7 +23,7 @@
     <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="/.">SparkCodeInternal</a>
+                <a class="navbar-brand" href="../..">SparkCodeInternal</a>
                 <!-- Expander button -->
                 <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
@@ -34,18 +34,18 @@
                         <!-- Main navigation -->
                         <ul class="nav navbar-nav">
                             <li class="navitem">
-                                <a href="/." class="nav-link">Introduction</a>
+                                <a href="../.." class="nav-link">Introduction</a>
                             </li>
-                            <li class="dropdown">
+                            <li class="dropdown active">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="/SparkCore/YarnAllocator/" class="dropdown-item">YarnAllocator</a>
+    <a href="./" class="dropdown-item active">YarnAllocator</a>
 </li>
                                     
 <li>
-    <a href="/SparkCore/ShuffleService/" class="dropdown-item">ShuffleService</a>
+    <a href="../ShuffleService/" class="dropdown-item">ShuffleService</a>
 </li>
                                 </ul>
                             </li>
@@ -54,7 +54,7 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="/SparkSQL/AQE/" class="dropdown-item">AQE</a>
+    <a href="../../SparkSQL/AQE/" class="dropdown-item">AQE</a>
 </li>
                                 </ul>
                             </li>
@@ -67,7 +67,17 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a href="https://github.com/hwanghw/SparkCodeInternal" class="nav-link">hwanghw/SparkCodeInternal</a>
+                                <a rel="prev" href="../.." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../ShuffleService/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkCore/YarnAllocator.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
                             </li>
                     </ul>
                 </div>
@@ -76,15 +86,71 @@
 
         <div class="container">
             <div class="row">
-
-    <div class="row-fluid">
-      <div id="main-content" class="span12">
-        <h1 id="404-page-not-found" style="text-align: center">404</h1>
-        <p style="text-align: center"><strong>Page not found</strong></p>
-      </div>
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
     </div>
 
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#yarn-allocator" class="nav-link">Yarn Allocator</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#code" class="nav-link">Code</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
 
+<h1 id="yarn-allocator">Yarn Allocator<a class="headerlink" href="#yarn-allocator" title="Permanent link">&para;</a></h1>
+<div class="toc">
+<ul>
+<li><a href="#yarn-allocator">Yarn Allocator</a><ul>
+<li><a href="#code">Code</a><ul>
+<li><a href="#yarnallocator">YarnAllocator</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 id="code">Code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h2>
+<h3 id="yarnallocator"><strong>YarnAllocator</strong><a class="headerlink" href="#yarnallocator" title="Permanent link">&para;</a></h3>
+<p>org.apache.spark.deploy.yarn.YarnAllocator</p>
+<pre><code>/**
+ * YarnAllocator is charged with requesting containers from the YARN ResourceManager and deciding
+ * what to do with containers when YARN fulfills these requests.
+ *
+ * This class makes use of YARN's AMRMClient APIs. We interact with the AMRMClient in three ways:
+ * * Making our resource needs known, which updates local bookkeeping about containers requested.
+ * * Calling &quot;allocate&quot;, which syncs our local container requests with the RM, and returns any
+ *   containers that YARN has granted to us.  This also functions as a heartbeat.
+ * * Processing the containers granted to us to possibly launch executors inside of them.
+ *
+ * The public methods of this class are thread-safe.  All methods that mutate state are
+ * synchronized.
+ */
+private[yarn] class YarnAllocator(
+    driverUrl: String,
+    driverRef: RpcEndpointRef,
+    conf: YarnConfiguration,
+    sparkConf: SparkConf,
+    amClient: AMRMClient[ContainerRequest],
+    appAttemptId: ApplicationAttemptId,
+    securityMgr: SecurityManager,
+    localResources: Map[String, LocalResource],
+    resolver: SparkRackResolver,
+    clock: Clock = new SystemClock)
+  extends Logging {
+</code></pre></div>
             </div>
         </div>
 
@@ -93,11 +159,11 @@
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
         <script>
-            var base_url = "/",
+            var base_url = "../..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="/js/base.js" defer></script>
-        <script src="/search/main.js" defer></script>
+        <script src="../../js/base.js" defer></script>
+        <script src="../../search/main.js" defer></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">

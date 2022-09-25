@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>ShuffleService - SparkCodeInternal</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">SparkCodeInternal</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Introduction</a>
+                            </li>
+                            <li class="dropdown active">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../YarnAllocator/" class="dropdown-item">YarnAllocator</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active">ShuffleService</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SQL <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../SparkSQL/AQE/" class="dropdown-item">AQE</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../YarnAllocator/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../../SparkSQL/AQE/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkCore/ShuffleService.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#shuffle-service" class="nav-link">Shuffle Service</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#blocktranserservice" class="nav-link">BlockTranserService</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests" class="nav-link">Improve Spark shuffle server responsiveness to non-ChunkFetch requests</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#push-based-shuffle" class="nav-link">push-based shuffle</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#use-remote-storage-for-persisting-shuffle-data" class="nav-link">Use remote storage for persisting shuffle data</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="shuffle-service">Shuffle Service<a class="headerlink" href="#shuffle-service" title="Permanent link">&para;</a></h1>
+<div class="toc">
+<ul>
+<li><a href="#shuffle-service">Shuffle Service</a><ul>
+<li><a href="#blocktranserservice">BlockTranserService</a><ul>
+<li><a href="#code">Code</a></li>
+</ul>
+</li>
+<li><a href="#improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests">Improve Spark shuffle server responsiveness to non-ChunkFetch requests</a></li>
+<li><a href="#push-based-shuffle">push-based shuffle</a></li>
+<li><a href="#use-remote-storage-for-persisting-shuffle-data">Use remote storage for persisting shuffle data</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 id="blocktranserservice">BlockTranserService<a class="headerlink" href="#blocktranserservice" title="Permanent link">&para;</a></h2>
+<h3 id="code">Code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h3>
+<pre><code>/**
+ * The BlockTransferService that used for fetching a set of blocks at time. Each instance of
+ * BlockTransferService contains both client and server inside.
+ */
+private[spark]
+abstract class BlockTransferService extends BlockStoreClient {
+
+</code></pre>
+<pre><code>/**
+ * A BlockTransferService that uses Netty to fetch a set of blocks at time.
+ */
+private[spark] class NettyBlockTransferService(
+    conf: SparkConf,
+    securityManager: SecurityManager,
+    bindAddress: String,
+    override val hostName: String,
+    _port: Int,
+    numCores: Int,
+    driverEndPointRef: RpcEndpointRef = null)
+  extends BlockTransferService {
+
+    override def init(blockDataManager: BlockDataManager): Unit = {
+    val rpcHandler = new NettyBlockRpcServer(conf.getAppId, serializer, blockDataManager)
+    var serverBootstrap: Option[TransportServerBootstrap] = None
+    var clientBootstrap: Option[TransportClientBootstrap] = None
+    this.transportConf = SparkTransportConf.fromSparkConf(conf, &quot;shuffle&quot;, numCores)
+    if (authEnabled) {
+      serverBootstrap = Some(new AuthServerBootstrap(transportConf, securityManager))
+      clientBootstrap = Some(new AuthClientBootstrap(transportConf, conf.getAppId, securityManager))
+    }
+    transportContext = new TransportContext(transportConf, rpcHandler)
+    clientFactory = transportContext.createClientFactory(clientBootstrap.toSeq.asJava)
+    server = createServer(serverBootstrap.toList)
+    appId = conf.getAppId
+
+    if (hostName.equals(bindAddress)) {
+      logger.info(s&quot;Server created on $hostName:${server.getPort}&quot;)
+    } else {
+      logger.info(s&quot;Server created on $hostName $bindAddress:${server.getPort}&quot;)
+    }
+  }
+</code></pre>
+<h2 id="improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests">Improve Spark shuffle server responsiveness to non-ChunkFetch requests<a class="headerlink" href="#improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests" title="Permanent link">&para;</a></h2>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-24355">SPARK-24355 Improve Spark shuffle server responsiveness to non-ChunkFetch requests</a></p>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-30623">SPARK-30623 Spark external shuffle allow disable of separate event loop group</a><br />
+What changes were proposed in this pull request? Fix the regression caused by PR #22173.
+The original PR changes the logic of handling <code>ChunkFetchReqeust</code> from async to sync, that&rsquo;s causes the shuffle benchmark regression.
+This PR fixes the regression back to the async mode by reusing the config <code>spark.shuffle.server.chunkFetchHandlerThreadsPercent</code>.
+When the user sets the config, ChunkFetchReqeust will be processed in a separate event loop group, otherwise, the code path is exactly the same as before.
+Performance regression described in [comment](https://github.com/apache/spark/pull/22173#issuecomment-572459561</p>
+<p><strong>org.apache.spark.network.server.ChunkFetchRequestHandler#respond</strong></p>
+<pre><code>  /**
+   * The invocation to channel.writeAndFlush is async, and the actual I/O on the
+   * channel will be handled by the EventLoop the channel is registered to. So even
+   * though we are processing the ChunkFetchRequest in a separate thread pool, the actual I/O,
+   * which is the potentially blocking call that could deplete server handler threads, is still
+   * being processed by TransportServer's default EventLoopGroup.
+   *
+   * When syncModeEnabled is true, Spark will throttle the max number of threads that channel I/O
+   * for sending response to ChunkFetchRequest, the thread calling channel.writeAndFlush will wait
+   * for the completion of sending response back to client by invoking await(). This will throttle
+   * the rate at which threads from ChunkFetchRequest dedicated EventLoopGroup submit channel I/O
+   * requests to TransportServer's default EventLoopGroup, thus making sure that we can reserve
+   * some threads in TransportServer's default EventLoopGroup for handling other RPC messages.
+   */
+  private ChannelFuture respond(
+      final Channel channel,
+      final Encodable result) throws InterruptedException {
+    final SocketAddress remoteAddress = channel.remoteAddress();
+    ChannelFuture channelFuture;
+    if (syncModeEnabled) {
+      channelFuture = channel.writeAndFlush(result).await();
+    } else {
+      channelFuture = channel.writeAndFlush(result);
+    }
+    return channelFuture.addListener((ChannelFutureListener) future -&gt; {
+      if (future.isSuccess()) {
+        logger.trace(&quot;Sent result {} to client {}&quot;, result, remoteAddress);
+      } else {
+        logger.error(String.format(&quot;Error sending result %s to %s; closing connection&quot;,
+          result, remoteAddress), future.cause());
+        channel.close();
+      }
+    });
+  }   
+</code></pre>
+<p>Q: Why await() needed?</p>
+<p>I think await does&rsquo;t provide any benefit and could be removed.
+When the chunk fetch event loop runs</p>
+<pre><code>channel.writeAndFlush(result)
+</code></pre>
+<p>This adds a WriteAndFlushTask in the pendingQueue of the default server-IO thread registered with that channel.</p>
+<p>The code in NioEventLoop.run() itself throttles the number of tasks that can be run at a time from its pending queue.
+Here is the code:</p>
+<pre><code>                    final long ioStartTime = System.nanoTime();
+                    try {
+                        processSelectedKeys();
+                    } finally {
+                        // Ensure we always run tasks.
+                        final long ioTime = System.nanoTime() - ioStartTime;
+                        runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
+                    }
+                }
+</code></pre>
+<p>Here it records how much time it took to perform the IO operations, that is, execute processSelectedKeys(). runAllTasks, which is the method that processes the tasks from pendingQueue, will be performed for the same amount of time.</p>
+<p>runAllTasks() does process 64 tasks and then checks the time.</p>
+<pre><code>        // Check timeout every 64 tasks because nanoTime() is relatively expensive.
+            // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            if ((runTasks &amp; 0x3F) == 0) {
+                lastExecutionTime = ScheduledFutureTask.nanoTime();
+                if (lastExecutionTime &gt;= deadline) {
+                    break;
+                }
+            } 
+</code></pre>
+<p>This ensures that the default server-IO thread always gets time to process the ready channels. Its not always busy processing WriteAndFlushTask</p>
+<p>Answer:
+I removed the await and tested with our internal stress testing framework. I started seeing SASL requests timing out. In this test, I observed more than 2 minutes delay between channel registration and when the first bytes are read from the channel.</p>
+<pre><code>2020-01-24 22:53:34,019 DEBUG org.spark_project.io.netty.handler.logging.LoggingHandler: [id: 0xd475f5ff, L:/10.150.16.27:7337 - R:/10.150.16.44:11388] REGISTERED
+2020-01-24 22:53:34,019 DEBUG org.spark_project.io.netty.handler.logging.LoggingHandler: [id: 0xd475f5ff, L:/10.150.16.27:7337 - R:/10.150.16.44:11388] ACTIVE
+
+2020-01-24 22:55:05,207 DEBUG org.spark_project.io.netty.handler.logging.LoggingHandler: [id: 0xd475f5ff, L:/10.150.16.27:7337 - R:/10.150.16.44:11388] READ: 48B
+2020-01-24 22:55:05,207 DEBUG org.spark_project.io.netty.handler.logging.LoggingHandler: [id: 0xd475f5ff, L:/10.150.16.27:7337 - R:/10.150.16.44:11388] WRITE: org.apache.spark.network.protocol.MessageWithHeader@27e59ee9
+2020-01-24 22:55:05,207 DEBUG org.spark_project.io.netty.handler.logging.LoggingHandler: [id: 0xd475f5ff, L:/10.150.16.27:7337 - R:/10.150.16.44:11388] FLUSH
+2020-01-24 22:55:05,207 INFO org.apache.spark.network.server.OutgoingChannelHandler: OUTPUT request 5929104419960968526 channel d475f5ff request_rec 1579906505207 transport_rec 1579906505207 flush 1579906505207  receive-transport 0 transport-flush 0 total 0
+</code></pre>
+<p>Since there is a delay in reading the channel, I suspect this is because the hardcoding in netty code
+SingleThreadEventExecutor.runAllTask() that checks time only after 64 tasks. WriteAndFlush tasks are bulky tasks. With await there will be just 1 WriteAndFlushTask per channel in the IO thread&rsquo;s pending queue and the rest of the tasks will be smaller tasks.
+However, without await there are more WriteAndFlush tasks per channel in the IO thread&rsquo;s queue. Since it processes 64 tasks and then checks time, this time increases with more WriteAndFlush tasks.</p>
+<pre><code>/ Check timeout every 64 tasks because nanoTime() is relatively expensive.
+            // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            if ((runTasks &amp; 0x3F) == 0) {
+                lastExecutionTime = ScheduledFutureTask.nanoTime();
+                if (lastExecutionTime &gt;= deadline) {
+                    break;
+                }
+            }
+</code></pre>
+<p>I can test this theory by lowering this number in a fork of netty and building spark against it. However, for now we can&rsquo;t remove await().</p>
+<p>Note: This test was with a dedicated boss event loop group which is why we don&rsquo;t see any delay in channel registration.</p>
+<h2 id="push-based-shuffle">push-based shuffle<a class="headerlink" href="#push-based-shuffle" title="Permanent link">&para;</a></h2>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-30602">SPARK-30602 SPIP: Support push-based shuffle to improve shuffle efficiency</a></p>
+<p><a href="https://github.com/apache/spark/pull/29808">Consolidated reference PR for Push-based shuffle</a></p>
+<h2 id="use-remote-storage-for-persisting-shuffle-data">Use remote storage for persisting shuffle data<a class="headerlink" href="#use-remote-storage-for-persisting-shuffle-data" title="Permanent link">&para;</a></h2>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-25299">architecture discussion - Use remote storage for persisting shuffle data</a></p>
+<p><a href="https://docs.google.com/document/d/1d6egnL6WHOwWZe8MWv3m8n4PToNacdx7n_0iMSWwhCQ/edit">SPIP: `SPARK-25299 - An API For Writing Shuffle Data To Remote Storage</a></p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js" defer></script>
+        <script src="../../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
