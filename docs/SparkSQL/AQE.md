@@ -1,5 +1,6 @@
-# Adaptive execution in Spark
+[TOC]
 
+# Adaptive execution in Spark
 ## Jira
 [SPARK-31412 Feature requirement (with subtasks list)](https://issues.apache.org/jira/browse/SPARK-31412)  
 [Design Doc](https://docs.google.com/document/d/1mpVjvQZRAkD-Ggy6-hcjXtBPiQoVbZGe3dLnAKgtJ4k/edit?usp=sharing)
@@ -10,15 +11,20 @@
 
 [SPARK-29544 Optimize skewed join at runtime with new Adaptive Execution](https://issues.apache.org/jira/browse/SPARK-29544)
 
+[SPARK-31865 Fix complex AQE query stage not reused](https://issues.apache.org/jira/browse/SPARK-31865)
+
+[SPARK-35552 Make query stage materialized more readable](https://issues.apache.org/jira/browse/SPARK-35552)
 
 [SPARK-9850 Adaptive execution in Spark (original idea)](https://issues.apache.org/jira/browse/SPARK-9850)  
 [Design Doc](https://issues.apache.org/jira/secure/attachment/12749984/AdaptiveExecutionInSpark.pdf)
 
 [SPARK-9851 Support submitting map stages individually in DAGScheduler](https://issues.apache.org/jira/browse/SPARK-9851)
 
-## code
+## Code
 
-### org.apache.spark.sql.execution.QueryExecution#preparations
+### **QueryExecution#preparations**
+
+org.apache.spark.sql.execution.QueryExecution#preparations
 ```
 private[execution] def preparations(
    sparkSession: SparkSession,
@@ -27,11 +33,10 @@ private[execution] def preparations(
  // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
  // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
  adaptiveExecutionRule.toSeq ++
-
-
 ```
 
-### org.apache.spark.sql.execution.adaptive.InsertAdaptiveSparkPlan
+### **InsertAdaptiveSparkPlan**
+org.apache.spark.sql.execution.adaptive.InsertAdaptiveSparkPlan
 ```
 /**
 * This rule wraps the query plan with an [[AdaptiveSparkPlanExec]], which executes the query plan
@@ -102,7 +107,9 @@ case class InsertAdaptiveSparkPlan(
   } 
 ```
 
-### org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec
+### **AdaptiveSparkPlanExec**
+
+org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec
 ```
 
 /**
@@ -173,6 +180,8 @@ case class AdaptiveSparkPlanExec(
               case _ => false
             }
 
+
+          ====================  stage.materialize() is run as Future async =========================
           // Start materialization of all new stages and fail fast if any stages failed eagerly
           reorderedNewStages.foreach { stage =>
             try {
@@ -188,6 +197,8 @@ case class AdaptiveSparkPlanExec(
                 cleanUpAndThrowException(Seq(e), Some(stage.id))
             }
           }
+          ==========================================================================================
+          
         }
 
         // Wait on the next completed stage, which indicates new stats are available and probably
@@ -481,7 +492,8 @@ case class AdaptiveSparkPlanExec(
   
 ```
 
-### org.apache.spark.sql.execution.adaptive.QueryStageExec
+### **QueryStageExec**
+org.apache.spark.sql.execution.adaptive.QueryStageExec
 ```
 
 /**
@@ -524,16 +536,17 @@ abstract class QueryStageExec extends LeafExecNode {
    */
   def doMaterialize(): Future[Any]
 
+====== materialize() is called by org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#getFinalPhysicalPlan  ===
   /**
    * Materialize this query stage, to prepare for the execution, like submitting map stages,
    * broadcasting data, etc. The caller side can use the returned [[Future]] to wait until this
    * stage is ready.
    */
-  final def materialize(): Future[Any] = {  <== called by org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#getFinalPhysicalPlan
+  final def materialize(): Future[Any] = {  
     logDebug(s"Materialize query stage ${this.getClass.getSimpleName}: $id")
     doMaterialize()
   }
-  
+=========================================================================================================  
 ```
 
 
@@ -594,7 +607,7 @@ case class BroadcastQueryStageExec(
   override def getRuntimeStatistics: Statistics = broadcast.runtimeStatistics
 ```
 
-### reuseQueryStage
+### **reuseQueryStage**
 
 org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#createQueryStages => reuseQueryStage  
 
@@ -629,5 +642,243 @@ org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec#newReuseInstance
       _canonicalized)
     reuse._resultOption = this._resultOption
     reuse
+  }
+```
+
+### Adaptive coalesce partitions
+SQLConf
+```
+  val COALESCE_PARTITIONS_ENABLED =
+    buildConf("spark.sql.adaptive.coalescePartitions.enabled")
+      .doc(s"When true and '${ADAPTIVE_EXECUTION_ENABLED.key}' is true, Spark will coalesce " +
+        "contiguous shuffle partitions according to the target size (specified by " +
+        s"'${ADVISORY_PARTITION_SIZE_IN_BYTES.key}'), to avoid too many small tasks.")
+      .version("3.0.0")
+      .booleanConf
+      .createWithDefault(true)
+
+  val COALESCE_PARTITIONS_PARALLELISM_FIRST =
+    buildConf("spark.sql.adaptive.coalescePartitions.parallelismFirst")
+      .doc("When true, Spark does not respect the target size specified by " +
+        s"'${ADVISORY_PARTITION_SIZE_IN_BYTES.key}' (default 64MB) when coalescing contiguous " +
+        "shuffle partitions, but adaptively calculate the target size according to the default " +
+        "parallelism of the Spark cluster. The calculated size is usually smaller than the " +
+        "configured target size. This is to maximize the parallelism and avoid performance " +
+        "regression when enabling adaptive query execution. It's recommended to set this config " +
+        "to false and respect the configured target size.")
+      .version("3.2.0")
+      .booleanConf
+      .createWithDefault(true)
+
+  val COALESCE_PARTITIONS_MIN_PARTITION_SIZE =
+    buildConf("spark.sql.adaptive.coalescePartitions.minPartitionSize")
+      .doc("The minimum size of shuffle partitions after coalescing. This is useful when the " +
+        "adaptively calculated target size is too small during partition coalescing.")
+      .version("3.2.0")
+      .bytesConf(ByteUnit.BYTE)
+      .checkValue(_ > 0, "minPartitionSize must be positive")
+      .createWithDefaultString("1MB")
+
+  val COALESCE_PARTITIONS_MIN_PARTITION_NUM =
+    buildConf("spark.sql.adaptive.coalescePartitions.minPartitionNum")
+      .internal()
+      .doc("(deprecated) The suggested (not guaranteed) minimum number of shuffle partitions " +
+        "after coalescing. If not set, the default value is the default parallelism of the " +
+        "Spark cluster. This configuration only has an effect when " +
+        s"'${ADAPTIVE_EXECUTION_ENABLED.key}' and " +
+        s"'${COALESCE_PARTITIONS_ENABLED.key}' are both true.")
+      .version("3.0.0")
+      .intConf
+      .checkValue(_ > 0, "The minimum number of partitions must be positive.")
+      .createOptional
+
+  val COALESCE_PARTITIONS_INITIAL_PARTITION_NUM =
+    buildConf("spark.sql.adaptive.coalescePartitions.initialPartitionNum")
+      .doc("The initial number of shuffle partitions before coalescing. If not set, it equals to " +
+        s"${SHUFFLE_PARTITIONS.key}. This configuration only has an effect when " +
+        s"'${ADAPTIVE_EXECUTION_ENABLED.key}' and '${COALESCE_PARTITIONS_ENABLED.key}' " +
+        "are both true.")
+      .version("3.0.0")
+      .intConf
+      .checkValue(_ > 0, "The initial number of partitions must be positive.")
+      .createOptional
+```
+org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#queryStageOptimizerRules
+```
+  // A list of physical optimizer rules to be applied to a new stage before its execution. These
+  // optimizations should be stage-independent.
+  @transient private val queryStageOptimizerRules: Seq[Rule[SparkPlan]] = Seq(
+    PlanAdaptiveDynamicPruningFilters(this),
+    ReuseAdaptiveSubquery(context.subqueryCache),
+    OptimizeSkewInRebalancePartitions,
+    
+    ====== rule for coalesce partitions ==========
+    CoalesceShufflePartitions(context.session),
+    ==============================================
+    // `OptimizeShuffleWithLocalRead` needs to make use of 'AQEShuffleReadExec.partitionSpecs'
+    // added by `CoalesceShufflePartitions`, and must be executed after it.
+    OptimizeShuffleWithLocalRead
+  )
+```
+
+org.apache.spark.sql.execution.adaptive.CoalesceShufflePartitions
+```
+/**
+ * A rule to coalesce the shuffle partitions based on the map output statistics, which can
+ * avoid many small reduce tasks that hurt performance.
+ */
+case class CoalesceShufflePartitions(session: SparkSession) extends AQEShuffleReadRule {
+  override def apply(plan: SparkPlan): SparkPlan = {
+    if (!conf.coalesceShufflePartitionsEnabled) {
+      return plan
+    }
+
+    // Ideally, this rule should simply coalesce partitions w.r.t. the target size specified by
+    // ADVISORY_PARTITION_SIZE_IN_BYTES (default 64MB). To avoid perf regression in AQE, this
+    // rule by default tries to maximize the parallelism and set the target size to
+    // `total shuffle size / Spark default parallelism`. In case the `Spark default parallelism`
+    // is too big, this rule also respect the minimum partition size specified by
+    // COALESCE_PARTITIONS_MIN_PARTITION_SIZE (default 1MB).
+    // For history reason, this rule also need to support the config
+    // COALESCE_PARTITIONS_MIN_PARTITION_NUM. We should remove this config in the future.
+    val minNumPartitions = conf.getConf(SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_NUM).getOrElse {
+      if (conf.getConf(SQLConf.COALESCE_PARTITIONS_PARALLELISM_FIRST)) {
+        // We fall back to Spark default parallelism if the minimum number of coalesced partitions
+        // is not set, so to avoid perf regressions compared to no coalescing.
+        session.sparkContext.defaultParallelism
+      } else {
+        // If we don't need to maximize the parallelism, we set `minPartitionNum` to 1, so that
+        // the specified advisory partition size will be respected.
+        1
+      }
+    }
+    val advisoryTargetSize = conf.getConf(SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES)
+    val minPartitionSize = if (Utils.isTesting) {
+      // In the tests, we usually set the target size to a very small value that is even smaller
+      // than the default value of the min partition size. Here we also adjust the min partition
+      // size to be not larger than 20% of the target size, so that the tests don't need to set
+      // both configs all the time to check the coalescing behavior.
+      conf.getConf(SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_SIZE).min(advisoryTargetSize / 5)
+    } else {
+      conf.getConf(SQLConf.COALESCE_PARTITIONS_MIN_PARTITION_SIZE)
+    }
+
+    // Sub-plans under the Union operator can be coalesced independently, so we can divide them
+    // into independent "coalesce groups", and all shuffle stages within each group have to be
+    // coalesced together.
+    val coalesceGroups = collectCoalesceGroups(plan)
+
+    // Divide minimum task parallelism among coalesce groups according to their data sizes.
+    val minNumPartitionsByGroup = if (coalesceGroups.length == 1) {
+      Seq(math.max(minNumPartitions, 1))
+    } else {
+      val sizes =
+        coalesceGroups.map(_.flatMap(_.shuffleStage.mapStats.map(_.bytesByPartitionId.sum)).sum)
+      val totalSize = sizes.sum
+      sizes.map { size =>
+        val num = if (totalSize > 0) {
+          math.round(minNumPartitions * 1.0 * size / totalSize)
+        } else {
+          minNumPartitions
+        }
+        math.max(num.toInt, 1)
+      }
+    }
+
+    val specsMap = mutable.HashMap.empty[Int, Seq[ShufflePartitionSpec]]
+    // Coalesce partitions for each coalesce group independently.
+    coalesceGroups.zip(minNumPartitionsByGroup).foreach { case (shuffleStages, minNumPartitions) =>
+      val newPartitionSpecs = ShufflePartitionsUtil.coalescePartitions(
+        shuffleStages.map(_.shuffleStage.mapStats),
+        shuffleStages.map(_.partitionSpecs),
+        advisoryTargetSize = advisoryTargetSize,
+        minNumPartitions = minNumPartitions,
+        minPartitionSize = minPartitionSize)
+
+      if (newPartitionSpecs.nonEmpty) {
+        shuffleStages.zip(newPartitionSpecs).map { case (stageInfo, partSpecs) =>
+          specsMap.put(stageInfo.shuffleStage.id, partSpecs)
+        }
+      }
+    }
+
+    if (specsMap.nonEmpty) {
+      updateShuffleReads(plan, specsMap.toMap)
+    } else {
+      plan
+    }
+  }
+
+  private def updateShuffleReads(
+      plan: SparkPlan, specsMap: Map[Int, Seq[ShufflePartitionSpec]]): SparkPlan = plan match {
+    // Even for shuffle exchange whose input RDD has 0 partition, we should still update its
+    // `partitionStartIndices`, so that all the leaf shuffles in a stage have the same
+    // number of output partitions.
+    case ShuffleStageInfo(stage, _) =>
+      specsMap.get(stage.id).map { specs =>
+        AQEShuffleReadExec(stage, specs)
+      }.getOrElse(plan)
+    case other => other.mapChildren(updateShuffleReads(_, specsMap))
+  }
+
+```
+
+org.apache.spark.sql.execution.adaptive.AQEShuffleReadRule
+```
+
+/**
+ * A rule that may create [[AQEShuffleReadExec]] on top of [[ShuffleQueryStageExec]] and change the
+ * plan output partitioning. The AQE framework will skip the rule if it leads to extra shuffles.
+ */
+trait AQEShuffleReadRule extends Rule[SparkPlan] {
+  /**
+   * Returns the list of [[ShuffleOrigin]]s supported by this rule.
+   */
+  protected def supportedShuffleOrigins: Seq[ShuffleOrigin]
+
+  protected def isSupported(shuffle: ShuffleExchangeLike): Boolean = {
+    supportedShuffleOrigins.contains(shuffle.shuffleOrigin)
+  }
+}
+```
+
+org.apache.spark.sql.execution.adaptive.AQEShuffleReadExec
+```
+/**
+ * A wrapper of shuffle query stage, which follows the given partition arrangement.
+ *
+ * @param child           It is usually `ShuffleQueryStageExec`, but can be the shuffle exchange
+ *                        node during canonicalization.
+ * @param partitionSpecs  The partition specs that defines the arrangement, requires at least one
+ *                        partition.
+ */
+case class AQEShuffleReadExec private(
+    child: SparkPlan,
+    partitionSpecs: Seq[ShufflePartitionSpec]) extends UnaryExecNode {
+
+  private def shuffleStage = child match {
+    case stage: ShuffleQueryStageExec => Some(stage)
+    case _ => None
+  }
+      
+  private lazy val shuffleRDD: RDD[_] = {
+    shuffleStage match {
+      case Some(stage) =>
+        sendDriverMetrics()
+        stage.shuffle.getShuffleRDD(partitionSpecs.toArray)
+      case _ =>
+        throw new IllegalStateException("operating on canonicalized plan")
+    }
+  }
+
+  override protected def doExecute(): RDD[InternalRow] = {
+    shuffleRDD.asInstanceOf[RDD[InternalRow]]
+  }
+```
+
+org.apache.spark.sql.execution.exchange.ShuffleExchangeExec#getShuffleRDD
+```
+  override def getShuffleRDD(partitionSpecs: Array[ShufflePartitionSpec]): RDD[InternalRow] = {
+    new ShuffledRowRDD(shuffleDependency, readMetrics, partitionSpecs)
   }
 ```

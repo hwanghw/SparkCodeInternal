@@ -1,19 +1,30 @@
 site_name: SparkCodeInternal
 repo_name: "hwanghw/SparkCodeInternal"
 repo_url: "https://github.com/hwanghw/SparkCodeInternal"
+edit_uri: "/hwanghw/SparkCodeInternal/tree/main/docs"
 docs_dir: "docs"
 theme: 
   name: mkdocs
-  features: 
-    - tabs
+  navigation_depth: 2
+
 nav:
   - Introduction: 'index.md'
+  - Spark Core:
+    - YarnAllocator: 'SparkCore/YarnAllocator.md'
+    - ShuffleService: 'SparkCore/ShuffleService.md'
   - Spark SQL:
-    - AQE: 'SparkSQL/AQE.md'
+      - SparkPlan: 'SparkSQL/SparkPlan.md'
+      - AQE: 'SparkSQL/AQE.md'
+      - Aggregation: 'SparkSQL/Aggregation.md'
+      - Join: 'SparkSQL/Join.md'
+      - Pivot: 'SparkSQL/Pivot.md'
+      - Hive: 'SparkSQL/Hive.md'
 markdown_extensions:
     - toc:
         permalink: true
+    - smarty
+    - sane_lists
     - admonition
-    - codehilite
+    - fenced_code
     - attr_list
     - md_in_html
