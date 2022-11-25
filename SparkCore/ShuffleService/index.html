@@ -54,7 +54,31 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
+    <a href="../../SparkSQL/Analyzer/" class="dropdown-item">Analyzer</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkSQL/SparkPlan/" class="dropdown-item">SparkPlan</a>
+</li>
+                                    
+<li>
     <a href="../../SparkSQL/AQE/" class="dropdown-item">AQE</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkSQL/Aggregation/" class="dropdown-item">Aggregation</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkSQL/Join/" class="dropdown-item">Join</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkSQL/Pivot/" class="dropdown-item">Pivot</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkSQL/Hive/" class="dropdown-item">Hive</a>
 </li>
                                 </ul>
                             </li>
@@ -72,7 +96,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="../../SparkSQL/AQE/" class="nav-link">
+                                <a rel="next" href="../../SparkSQL/Analyzer/" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -122,7 +146,6 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h1 id="shuffle-service">Shuffle Service<a class="headerlink" href="#shuffle-service" title="Permanent link">&para;</a></h1>
 <div class="toc">
 <ul>
 <li><a href="#shuffle-service">Shuffle Service</a><ul>
@@ -137,6 +160,7 @@
 </li>
 </ul>
 </div>
+<h1 id="shuffle-service">Shuffle Service<a class="headerlink" href="#shuffle-service" title="Permanent link">&para;</a></h1>
 <h2 id="blocktranserservice">BlockTranserService<a class="headerlink" href="#blocktranserservice" title="Permanent link">&para;</a></h2>
 <h3 id="code">Code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h3>
 <pre><code>/**
@@ -182,8 +206,9 @@ private[spark] class NettyBlockTransferService(
   }
 </code></pre>
 <h2 id="improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests">Improve Spark shuffle server responsiveness to non-ChunkFetch requests<a class="headerlink" href="#improve-spark-shuffle-server-responsiveness-to-non-chunkfetch-requests" title="Permanent link">&para;</a></h2>
-<p><a href="https://issues.apache.org/jira/browse/SPARK-24355">SPARK-24355 Improve Spark shuffle server responsiveness to non-ChunkFetch requests</a></p>
-<p><a href="https://issues.apache.org/jira/browse/SPARK-30623">SPARK-30623 Spark external shuffle allow disable of separate event loop group</a><br />
+<p><a href="https://issues.apache.org/jira/browse/SPARK-24355">SPARK-24355 Improve Spark shuffle server responsiveness to non-ChunkFetch requests</a><br />
+<a href="https://issues.apache.org/jira/browse/SPARK-30512">SPARK-30512 Use a dedicated boss event group loop in the netty pipeline for external shuffle service</a><br />
+<a href="https://issues.apache.org/jira/browse/SPARK-30623">SPARK-30623 Spark external shuffle allow disable of separate event loop group</a><br />
 What changes were proposed in this pull request? Fix the regression caused by PR #22173.
 The original PR changes the logic of handling <code>ChunkFetchReqeust</code> from async to sync, that&rsquo;s causes the shuffle benchmark regression.
 This PR fixes the regression back to the async mode by reusing the config <code>spark.shuffle.server.chunkFetchHandlerThreadsPercent</code>.
@@ -280,8 +305,11 @@ However, without await there are more WriteAndFlush tasks per channel in the IO 
 <p>I can test this theory by lowering this number in a fork of netty and building spark against it. However, for now we can&rsquo;t remove await().</p>
 <p>Note: This test was with a dedicated boss event loop group which is why we don&rsquo;t see any delay in channel registration.</p>
 <h2 id="push-based-shuffle">push-based shuffle<a class="headerlink" href="#push-based-shuffle" title="Permanent link">&para;</a></h2>
-<p><a href="https://issues.apache.org/jira/browse/SPARK-30602">SPARK-30602 SPIP: Support push-based shuffle to improve shuffle efficiency</a></p>
-<p><a href="https://github.com/apache/spark/pull/29808">Consolidated reference PR for Push-based shuffle</a></p>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-30602">SPARK-30602 SPIP: Support push-based shuffle to improve shuffle efficiency</a><br />
+<a href="https://docs.google.com/document/d/1mYzKVZllA5Flw8AtoX7JUcXBOnNIDADWRbJ7GI6Y71Q/edit">doc: SPIP: Spark Push-Based Shuffle</a><br />
+<a href="https://github.com/apache/spark/pull/29808">Consolidated reference PR for Push-based shuffle</a></p>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-32917">SPARK-32917 Add support for executors to push shuffle blocks after successful map task completion</a><br />
+<a href="https://github.com/apache/spark/pull/30312/files">PR SPARK-32917</a></p>
 <h2 id="use-remote-storage-for-persisting-shuffle-data">Use remote storage for persisting shuffle data<a class="headerlink" href="#use-remote-storage-for-persisting-shuffle-data" title="Permanent link">&para;</a></h2>
 <p><a href="https://issues.apache.org/jira/browse/SPARK-25299">architecture discussion - Use remote storage for persisting shuffle data</a></p>
 <p><a href="https://docs.google.com/document/d/1d6egnL6WHOwWZe8MWv3m8n4PToNacdx7n_0iMSWwhCQ/edit">SPIP: `SPARK-25299 - An API For Writing Shuffle Data To Remote Storage</a></p></div>

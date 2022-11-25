@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Analyzer - SparkCodeInternal</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">SparkCodeInternal</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Introduction</a>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../SparkCore/YarnAllocator/" class="dropdown-item">YarnAllocator</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkCore/ShuffleService/" class="dropdown-item">ShuffleService</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="dropdown active">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SQL <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="./" class="dropdown-item active">Analyzer</a>
+</li>
+                                    
+<li>
+    <a href="../SparkPlan/" class="dropdown-item">SparkPlan</a>
+</li>
+                                    
+<li>
+    <a href="../AQE/" class="dropdown-item">AQE</a>
+</li>
+                                    
+<li>
+    <a href="../Aggregation/" class="dropdown-item">Aggregation</a>
+</li>
+                                    
+<li>
+    <a href="../Join/" class="dropdown-item">Join</a>
+</li>
+                                    
+<li>
+    <a href="../Pivot/" class="dropdown-item">Pivot</a>
+</li>
+                                    
+<li>
+    <a href="../Hive/" class="dropdown-item">Hive</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../../SparkCore/ShuffleService/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../SparkPlan/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkSQL/Analyzer.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#analyzer" class="nav-link">Analyzer</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#logical-query-plan-analyzer" class="nav-link">Logical query plan analyzer</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#resolvesessioncatalog" class="nav-link">ResolveSessionCatalog</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#analyzetable" class="nav-link">analyzeTable</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<div class="toc">
+<ul>
+<li><a href="#analyzer">Analyzer</a><ul>
+<li><a href="#logical-query-plan-analyzer">Logical query plan analyzer</a></li>
+<li><a href="#resolvesessioncatalog">ResolveSessionCatalog</a></li>
+<li><a href="#analyzetable">analyzeTable</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="analyzer">Analyzer<a class="headerlink" href="#analyzer" title="Permanent link">&para;</a></h1>
+<h2 id="logical-query-plan-analyzer">Logical query plan analyzer<a class="headerlink" href="#logical-query-plan-analyzer" title="Permanent link">&para;</a></h2>
+<pre><code>abstract class BaseSessionStateBuilder(
+    val session: SparkSession,
+    val parentState: Option[SessionState]) {
+  /**
+   * Logical query plan analyzer for resolving unresolved attributes and relations.
+   *
+   * Note: this depends on the `conf` and `catalog` fields.
+   */
+  protected def analyzer: Analyzer = new Analyzer(catalogManager) {
+    override val extendedResolutionRules: Seq[Rule[LogicalPlan]] =
+      new FindDataSourceTable(session) +:
+        new ResolveSQLOnFile(session) +:
+        new FallBackFileSourceV2(session) +:
+        ResolveEncodersInScalaAgg +:
+        new ResolveSessionCatalog(catalogManager) +:      =====&gt; ResolveSessionCatalog Rule
+        ResolveWriteToStream +:
+        new EvalSubqueriesForTimeTravel +:
+        customResolutionRules
+
+</code></pre>
+<h2 id="resolvesessioncatalog">ResolveSessionCatalog<a class="headerlink" href="#resolvesessioncatalog" title="Permanent link">&para;</a></h2>
+<pre><code>
+/**
+ * Resolves catalogs from the multi-part identifiers in SQL statements, and convert the statements
+ * to the corresponding v1 or v2 commands if the resolved catalog is the session catalog.
+ *
+ * We can remove this rule once we implement all the catalog functionality in `V2SessionCatalog`.
+ */
+class ResolveSessionCatalog(val catalogManager: CatalogManager)
+  extends Rule[LogicalPlan] with LookupCatalog {
+
+    override def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUp {
+
+      case AnalyzeTables(DatabaseInSessionCatalog(db), noScan) =&gt;
+      AnalyzeTablesCommand(Some(db), noScan)
+</code></pre>
+<pre><code>
+/**
+ * Analyzes all tables in the given database to generate statistics.
+ */
+case class AnalyzeTablesCommand(
+    databaseName: Option[String],
+    noScan: Boolean) extends LeafRunnableCommand {
+
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sessionState.catalog
+    val db = databaseName.getOrElse(catalog.getCurrentDatabase)
+    catalog.listTables(db).foreach { tbl =&gt;
+      try {
+        CommandUtils.analyzeTable(sparkSession, tbl, noScan)
+      } catch {
+        case NonFatal(e) =&gt;
+          logWarning(s&quot;Failed to analyze table ${tbl.table} in the &quot; +
+            s&quot;database $db because of ${e.toString}&quot;, e)
+      }
+    }
+    Seq.empty[Row]
+  }
+}
+</code></pre>
+<h2 id="analyzetable">analyzeTable<a class="headerlink" href="#analyzetable" title="Permanent link">&para;</a></h2>
+<p>org.apache.spark.sql.execution.command.CommandUtils#analyzeTable</p>
+<pre><code>  def analyzeTable(
+      sparkSession: SparkSession,
+      tableIdent: TableIdentifier,
+      noScan: Boolean): Unit = {
+    val sessionState = sparkSession.sessionState
+    val db = tableIdent.database.getOrElse(sessionState.catalog.getCurrentDatabase)
+    val tableIdentWithDB = TableIdentifier(tableIdent.table, Some(db))
+    val tableMeta = sessionState.catalog.getTableMetadata(tableIdentWithDB)
+    if (tableMeta.tableType == CatalogTableType.VIEW) {
+      // Analyzes a catalog view if the view is cached
+      val table = sparkSession.table(tableIdent.quotedString)
+      val cacheManager = sparkSession.sharedState.cacheManager
+      if (cacheManager.lookupCachedData(table.logicalPlan).isDefined) {
+        if (!noScan) {
+          // To collect table stats, materializes an underlying columnar RDD
+          table.count()
+        }
+      } else {
+        throw QueryCompilationErrors.analyzeTableNotSupportedOnViewsError()
+      }
+    } else {
+      // Compute stats for the whole table
+      val (newTotalSize, _) = CommandUtils.calculateTotalSize(sparkSession, tableMeta)  =====&gt; calculateTotalSize of the table
+      val newRowCount =
+        if (noScan) None else Some(BigInt(sparkSession.table(tableIdentWithDB).count()))
+
+      // Update the metastore if the above statistics of the table are different from those
+      // recorded in the metastore.
+      val newStats = CommandUtils.compareAndGetNewStats(tableMeta.stats, newTotalSize, newRowCount)
+      if (newStats.isDefined) {
+        sessionState.catalog.alterTableStats(tableIdentWithDB, newStats)
+      }
+    }
+  }
+
+  def calculateTotalSize(
+      spark: SparkSession,
+      catalogTable: CatalogTable): (BigInt, Seq[CatalogTablePartition]) = {
+    val sessionState = spark.sessionState
+    val startTime = System.nanoTime()
+    val (totalSize, newPartitions) = if (catalogTable.partitionColumnNames.isEmpty) {
+      (calculateSingleLocationSize(sessionState, catalogTable.identifier,                 =====&gt; calculateSingleLocationSize
+        catalogTable.storage.locationUri), Seq())
+    } else {
+      // Calculate table size as a sum of the visible partitions. See SPARK-21079
+      val partitions = sessionState.catalog.listPartitions(catalogTable.identifier)       =====&gt; listPartitions
+      logInfo(s&quot;Starting to calculate sizes for ${partitions.length} partitions.&quot;)
+      val paths = partitions.map(_.storage.locationUri)
+      val sizes = calculateMultipleLocationSizes(spark, catalogTable.identifier, paths)   =====&gt; calculateMultipleLocationSizes
+      val newPartitions = partitions.zipWithIndex.flatMap { case (p, idx) =&gt;
+        val newStats = CommandUtils.compareAndGetNewStats(p.stats, sizes(idx), None)
+        newStats.map(_ =&gt; p.copy(stats = newStats))
+      }
+      (sizes.sum, newPartitions)
+    }
+    logInfo(s&quot;It took ${(System.nanoTime() - startTime) / (1000 * 1000)} ms to calculate&quot; +
+      s&quot; the total size for table ${catalogTable.identifier}.&quot;)
+    (totalSize, newPartitions)
+  }
+
+
+  def calculateMultipleLocationSizes(
+      sparkSession: SparkSession,
+      tid: TableIdentifier,
+      paths: Seq[Option[URI]]): Seq[Long] = {
+    if (sparkSession.sessionState.conf.parallelFileListingInStatsComputation) {
+      calculateMultipleLocationSizesInParallel(sparkSession, paths.map(_.map(new Path(_))))
+    } else {
+      paths.map(p =&gt; calculateSingleLocationSize(sparkSession.sessionState, tid, p))
+    }
+  }
+
+
+  def calculateSingleLocationSize(
+      sessionState: SessionState,
+      identifier: TableIdentifier,
+      locationUri: Option[URI]): Long = {
+    // This method is mainly based on
+    // org.apache.hadoop.hive.ql.stats.StatsUtils.getFileSizeForTable(HiveConf, Table)
+    // in Hive 0.13 (except that we do not use fs.getContentSummary).
+    // TODO: Generalize statistics collection.
+    // TODO: Why fs.getContentSummary returns wrong size on Jenkins?
+    // Can we use fs.getContentSummary in future?
+    // Seems fs.getContentSummary returns wrong table size on Jenkins. So we use
+    // countFileSize to count the table size.
+    val stagingDir = sessionState.conf.getConfString(&quot;hive.exec.stagingdir&quot;, &quot;.hive-staging&quot;)
+
+    def getPathSize(fs: FileSystem, path: Path): Long = {
+      val fileStatus = fs.getFileStatus(path)
+      val size = if (fileStatus.isDirectory) {
+        fs.listStatus(path)
+          .map { status =&gt;
+            if (isDataPath(status.getPath, stagingDir)) {
+              getPathSize(fs, status.getPath)
+            } else {
+              0L
+            }
+          }.sum
+      } else {
+        fileStatus.getLen
+      }
+
+      size
+    }
+
+    val startTime = System.nanoTime()
+    val size = locationUri.map { p =&gt;
+      val path = new Path(p)
+      try {
+        val fs = path.getFileSystem(sessionState.newHadoopConf())
+        getPathSize(fs, path)
+      } catch {
+        case NonFatal(e) =&gt;
+          logWarning(
+            s&quot;Failed to get the size of table ${identifier.table} in the &quot; +
+              s&quot;database ${identifier.database} because of ${e.toString}&quot;, e)
+          0L
+      }
+    }.getOrElse(0L)
+    val durationInMs = (System.nanoTime() - startTime) / (1000 * 1000)
+    logDebug(s&quot;It took $durationInMs ms to calculate the total file size under path $locationUri.&quot;)
+
+    size
+  }
+
+</code></pre>
+<pre><code>private[spark] object HadoopFSUtils extends Logging {
+  /**
+   * Lists a collection of paths recursively. Picks the listing strategy adaptively depending
+   * on the number of paths to list.
+   *
+   * This may only be called on the driver.
+   *
+   * @param sc Spark context used to run parallel listing.
+   * @param paths Input paths to list
+   * @param hadoopConf Hadoop configuration
+   * @param filter Path filter used to exclude leaf files from result
+   * @param ignoreMissingFiles Ignore missing files that happen during recursive listing
+   *                           (e.g., due to race conditions)
+   * @param ignoreLocality Whether to fetch data locality info when listing leaf files. If false,
+   *                       this will return `FileStatus` without `BlockLocation` info.
+   * @param parallelismThreshold The threshold to enable parallelism. If the number of input paths
+   *                             is smaller than this value, this will fallback to use
+   *                             sequential listing.
+   * @param parallelismMax The maximum parallelism for listing. If the number of input paths is
+   *                       larger than this value, parallelism will be throttled to this value
+   *                       to avoid generating too many tasks.
+   * @return for each input path, the set of discovered files for the path
+   */
+  def parallelListLeafFiles(
+    sc: SparkContext,
+    paths: Seq[Path],
+    hadoopConf: Configuration,
+    filter: PathFilter,
+    ignoreMissingFiles: Boolean,
+    ignoreLocality: Boolean,
+    parallelismThreshold: Int,
+    parallelismMax: Int): Seq[(Path, Seq[FileStatus])] = {
+    parallelListLeafFilesInternal(sc, paths, hadoopConf, filter, isRootLevel = true,
+      ignoreMissingFiles, ignoreLocality, parallelismThreshold, parallelismMax)
+  }
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js" defer></script>
+        <script src="../../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Pivot - SparkCodeInternal</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">SparkCodeInternal</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Introduction</a>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../SparkCore/YarnAllocator/" class="dropdown-item">YarnAllocator</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkCore/ShuffleService/" class="dropdown-item">ShuffleService</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="dropdown active">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SQL <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Analyzer/" class="dropdown-item">Analyzer</a>
+</li>
+                                    
+<li>
+    <a href="../SparkPlan/" class="dropdown-item">SparkPlan</a>
+</li>
+                                    
+<li>
+    <a href="../AQE/" class="dropdown-item">AQE</a>
+</li>
+                                    
+<li>
+    <a href="../Aggregation/" class="dropdown-item">Aggregation</a>
+</li>
+                                    
+<li>
+    <a href="../Join/" class="dropdown-item">Join</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active">Pivot</a>
+</li>
+                                    
+<li>
+    <a href="../Hive/" class="dropdown-item">Hive</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../Join/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../Hive/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkSQL/Pivot.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#pivot" class="nav-link">Pivot</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#jira" class="nav-link">JIRA</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#code" class="nav-link">code</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<div class="toc">
+<ul>
+<li><a href="#pivot">Pivot</a><ul>
+<li><a href="#jira">JIRA</a></li>
+<li><a href="#code">code</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="pivot">Pivot<a class="headerlink" href="#pivot" title="Permanent link">&para;</a></h1>
+<h2 id="jira">JIRA<a class="headerlink" href="#jira" title="Permanent link">&para;</a></h2>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-8992">SPARK-8992 Add Pivot functionality to Spark SQL</a></p>
+<p><a href="https://issues.apache.org/jira/browse/SPARK-13749">SPARK-13749 Faster pivot implementation for many distinct values with two phase aggregation</a></p>
+<h2 id="code">code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h2>
+<p><strong>org.apache.spark.sql.catalyst.analysis.Analyzer#batches</strong></p>
+<pre><code>  override def batches: Seq[Batch] = Seq(
+        ...
+         Batch(&quot;Resolution&quot;, fixedPoint,
+         ResolveTableValuedFunctions(v1SessionCatalog) ::
+        ...
+         ResolvePivot ::
+         ResolveOrdinalInOrderByAndGroupBy ::
+         ResolveAggAliasInGroupBy ::
+         ResolveMissingReferences ::
+         ExtractGenerator ::
+         ResolveGenerate ::
+         ResolveFunctions ::
+         ResolveAliases ::
+         ResolveSubquery ::
+        ...
+</code></pre>
+<p><strong>org.apache.spark.sql.catalyst.analysis.Analyzer.ResolvePivot</strong></p>
+<pre><code>  object ResolvePivot extends Rule[LogicalPlan] with AliasHelper {
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsWithPruning(
+
+</code></pre>
+<p><strong>org.apache.spark.sql.catalyst.analysis.Analyzer.ResolveAliases</strong></p>
+<pre><code>  object ResolveAliases extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUpWithPruning(
+      _.containsPattern(UNRESOLVED_ALIAS), ruleId) {
+      case Aggregate(groups, aggs, child) if child.resolved &amp;&amp; hasUnresolvedAlias(aggs) =&gt;
+        Aggregate(groups, assignAliases(aggs), child)
+
+      case Pivot(groupByOpt, pivotColumn, pivotValues, aggregates, child)
+        if child.resolved &amp;&amp; groupByOpt.isDefined &amp;&amp; hasUnresolvedAlias(groupByOpt.get) =&gt;
+        Pivot(Some(assignAliases(groupByOpt.get)), pivotColumn, pivotValues, aggregates, child)
+</code></pre>
+<p><strong>org.apache.spark.sql.catalyst.plans.logical.Pivot</strong></p>
+<pre><code>/**
+ * A constructor for creating a pivot, which will later be converted to a [[Project]]
+ * or an [[Aggregate]] during the query analysis.
+ *
+ * @param groupByExprsOpt A sequence of group by expressions. This field should be None if coming
+ *                        from SQL, in which group by expressions are not explicitly specified.
+ * @param pivotColumn     The pivot column.
+ * @param pivotValues     A sequence of values for the pivot column.
+ * @param aggregates      The aggregation expressions, each with or without an alias.
+ * @param child           Child operator
+ */
+case class Pivot(
+    groupByExprsOpt: Option[Seq[NamedExpression]],
+    pivotColumn: Expression,
+    pivotValues: Seq[Expression],
+    aggregates: Seq[Expression],
+    child: LogicalPlan) extends UnaryNode {
+</code></pre>
+<p><strong>org.apache.spark.sql.RelationalGroupedDataset</strong></p>
+<pre><code>/**
+ * A set of methods for aggregations on a `DataFrame`, created by [[Dataset#groupBy groupBy]],
+ * [[Dataset#cube cube]] or [[Dataset#rollup rollup]] (and also `pivot`).
+ *
+ * The main method is the `agg` function, which has multiple variants. This class also contains
+ * some first-order statistics such as `mean`, `sum` for convenience.
+ *
+ * @note This class was named `GroupedData` in Spark 1.x.
+ *
+ * @since 2.0.0
+ */
+@Stable
+class RelationalGroupedDataset protected[sql](
+    private[sql] val df: DataFrame,
+    private[sql] val groupingExprs: Seq[Expression],
+    groupType: RelationalGroupedDataset.GroupType) {
+
+
+  /**
+   * Pivots a column of the current `DataFrame` and performs the specified aggregation.
+   *
+   * There are two versions of `pivot` function: one that requires the caller to specify the list
+   * of distinct values to pivot on, and one that does not. The latter is more concise but less
+   * efficient, because Spark needs to first compute the list of distinct values internally.
+   *
+   * {{{
+   *   // Compute the sum of earnings for each year by course with each course as a separate column
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;, Seq(&quot;dotNET&quot;, &quot;Java&quot;)).sum(&quot;earnings&quot;)
+   *
+   *   // Or without specifying column values (less efficient)
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;).sum(&quot;earnings&quot;)
+   * }}}
+   *
+   * @param pivotColumn Name of the column to pivot.
+   * @since 1.6.0
+   */
+  def pivot(pivotColumn: String): RelationalGroupedDataset = pivot(Column(pivotColumn))
+
+  /**
+   * Pivots a column of the current `DataFrame` and performs the specified aggregation.
+   * There are two versions of pivot function: one that requires the caller to specify the list
+   * of distinct values to pivot on, and one that does not. The latter is more concise but less
+   * efficient, because Spark needs to first compute the list of distinct values internally.
+   *
+   * {{{
+   *   // Compute the sum of earnings for each year by course with each course as a separate column
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;, Seq(&quot;dotNET&quot;, &quot;Java&quot;)).sum(&quot;earnings&quot;)
+   *
+   *   // Or without specifying column values (less efficient)
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;).sum(&quot;earnings&quot;)
+   * }}}
+   *
+   * From Spark 3.0.0, values can be literal columns, for instance, struct. For pivoting by
+   * multiple columns, use the `struct` function to combine the columns and values:
+   *
+   * {{{
+   *   df.groupBy(&quot;year&quot;)
+   *     .pivot(&quot;trainingCourse&quot;, Seq(struct(lit(&quot;java&quot;), lit(&quot;Experts&quot;))))
+   *     .agg(sum($&quot;earnings&quot;))
+   * }}}
+   *
+   * @param pivotColumn Name of the column to pivot.
+   * @param values List of values that will be translated to columns in the output DataFrame.
+   * @since 1.6.0
+   */
+  def pivot(pivotColumn: String, values: Seq[Any]): RelationalGroupedDataset = {
+    pivot(Column(pivotColumn), values)
+  }
+
+  /**
+   * (Java-specific) Pivots a column of the current `DataFrame` and performs the specified
+   * aggregation.
+   *
+   * There are two versions of pivot function: one that requires the caller to specify the list
+   * of distinct values to pivot on, and one that does not. The latter is more concise but less
+   * efficient, because Spark needs to first compute the list of distinct values internally.
+   *
+   * {{{
+   *   // Compute the sum of earnings for each year by course with each course as a separate column
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;, Arrays.&lt;Object&gt;asList(&quot;dotNET&quot;, &quot;Java&quot;)).sum(&quot;earnings&quot;);
+   *
+   *   // Or without specifying column values (less efficient)
+   *   df.groupBy(&quot;year&quot;).pivot(&quot;course&quot;).sum(&quot;earnings&quot;);
+   * }}}
+   *
+   * @param pivotColumn Name of the column to pivot.
+   * @param values List of values that will be translated to columns in the output DataFrame.
+   * @since 1.6.0
+   */
+  def pivot(pivotColumn: String, values: java.util.List[Any]): RelationalGroupedDataset = {
+    pivot(Column(pivotColumn), values)
+  }
+
+  /**
+   * Pivots a column of the current `DataFrame` and performs the specified aggregation.
+   * This is an overloaded version of the `pivot` method with `pivotColumn` of the `String` type.
+   *
+   * {{{
+   *   // Or without specifying column values (less efficient)
+   *   df.groupBy($&quot;year&quot;).pivot($&quot;course&quot;).sum($&quot;earnings&quot;);
+   * }}}
+   *
+   * @param pivotColumn he column to pivot.
+   * @since 2.4.0
+   */
+  def pivot(pivotColumn: Column): RelationalGroupedDataset = {
+    // This is to prevent unintended OOM errors when the number of distinct values is large
+    val maxValues = df.sparkSession.sessionState.conf.dataFramePivotMaxValues
+    // Get the distinct values of the column and sort them so its consistent
+    val values = df.select(pivotColumn)
+      .distinct()
+      .limit(maxValues + 1)
+      .sort(pivotColumn)  // ensure that the output columns are in a consistent logical order
+      .collect()
+      .map(_.get(0))
+      .toSeq
+
+    if (values.length &gt; maxValues) {
+      throw QueryCompilationErrors.aggregationFunctionAppliedOnNonNumericColumnError(
+        pivotColumn.toString, maxValues)
+    }
+
+    pivot(pivotColumn, values)
+  }
+
+  /**
+   * Pivots a column of the current `DataFrame` and performs the specified aggregation.
+   * This is an overloaded version of the `pivot` method with `pivotColumn` of the `String` type.
+   *
+   * {{{
+   *   // Compute the sum of earnings for each year by course with each course as a separate column
+   *   df.groupBy($&quot;year&quot;).pivot($&quot;course&quot;, Seq(&quot;dotNET&quot;, &quot;Java&quot;)).sum($&quot;earnings&quot;)
+   * }}}
+   *
+   * @param pivotColumn the column to pivot.
+   * @param values List of values that will be translated to columns in the output DataFrame.
+   * @since 2.4.0
+   */
+  def pivot(pivotColumn: Column, values: Seq[Any]): RelationalGroupedDataset = {
+    groupType match {
+      case RelationalGroupedDataset.GroupByType =&gt;
+        val valueExprs = values.map(_ match {
+          case c: Column =&gt; c.expr
+          case v =&gt;
+            try {
+              Literal.apply(v)
+            } catch {
+              case _: SparkRuntimeException =&gt;
+                throw QueryExecutionErrors.pivotColumnUnsupportedError(v, pivotColumn.expr.dataType)
+            }
+        })
+        new RelationalGroupedDataset(
+          df,
+          groupingExprs,
+          RelationalGroupedDataset.PivotType(pivotColumn.expr, valueExprs))
+      case _: RelationalGroupedDataset.PivotType =&gt;
+        throw QueryExecutionErrors.repeatedPivotsUnsupportedError()
+      case _ =&gt;
+        throw QueryExecutionErrors.pivotNotAfterGroupByUnsupportedError()
+    }
+  }
+
+  /**
+   * (Java-specific) Pivots a column of the current `DataFrame` and performs the specified
+   * aggregation. This is an overloaded version of the `pivot` method with `pivotColumn` of
+   * the `String` type.
+   *
+   * @param pivotColumn the column to pivot.
+   * @param values List of values that will be translated to columns in the output DataFrame.
+   * @since 2.4.0
+   */
+  def pivot(pivotColumn: Column, values: java.util.List[Any]): RelationalGroupedDataset = {
+    pivot(pivotColumn, values.asScala.toSeq)
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.RelationalGroupedDataset.PivotType</strong></p>
+<pre><code>  private[sql] case class PivotType(pivotCol: Expression, values: Seq[Expression]) extends GroupType
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js" defer></script>
+        <script src="../../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

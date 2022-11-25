@@ -54,7 +54,31 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
+    <a href="../Analyzer/" class="dropdown-item">Analyzer</a>
+</li>
+                                    
+<li>
+    <a href="../SparkPlan/" class="dropdown-item">SparkPlan</a>
+</li>
+                                    
+<li>
     <a href="./" class="dropdown-item active">AQE</a>
+</li>
+                                    
+<li>
+    <a href="../Aggregation/" class="dropdown-item">Aggregation</a>
+</li>
+                                    
+<li>
+    <a href="../Join/" class="dropdown-item">Join</a>
+</li>
+                                    
+<li>
+    <a href="../Pivot/" class="dropdown-item">Pivot</a>
+</li>
+                                    
+<li>
+    <a href="../Hive/" class="dropdown-item">Hive</a>
 </li>
                                 </ul>
                             </li>
@@ -67,12 +91,12 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="../../SparkCore/ShuffleService/" class="nav-link">
+                                <a rel="prev" href="../SparkPlan/" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" class="nav-link disabled">
+                                <a rel="next" href="../Aggregation/" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -103,7 +127,27 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#code" class="nav-link">Code</a>
+            <li class="nav-item" data-level="2"><a href="#queryexecutionpreparations" class="nav-link">QueryExecution#preparations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#insertadaptivesparkplan" class="nav-link">InsertAdaptiveSparkPlan</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#adaptivesparkplanexec" class="nav-link">AdaptiveSparkPlanExec</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#querystageexec" class="nav-link">QueryStageExec</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#reusequerystage" class="nav-link">reuseQueryStage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#adaptive-coalesce-partitions" class="nav-link">Adaptive coalesce partitions</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -114,12 +158,10 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h1 id="adaptive-execution-in-spark">Adaptive execution in Spark<a class="headerlink" href="#adaptive-execution-in-spark" title="Permanent link">&para;</a></h1>
 <div class="toc">
 <ul>
 <li><a href="#adaptive-execution-in-spark">Adaptive execution in Spark</a><ul>
 <li><a href="#jira">Jira</a></li>
-<li><a href="#code">Code</a><ul>
 <li><a href="#queryexecutionpreparations">QueryExecution#preparations</a></li>
 <li><a href="#insertadaptivesparkplan">InsertAdaptiveSparkPlan</a></li>
 <li><a href="#adaptivesparkplanexec">AdaptiveSparkPlanExec</a></li>
@@ -129,9 +171,8 @@
 </ul>
 </li>
 </ul>
-</li>
-</ul>
 </div>
+<h1 id="adaptive-execution-in-spark">Adaptive execution in Spark<a class="headerlink" href="#adaptive-execution-in-spark" title="Permanent link">&para;</a></h1>
 <h2 id="jira">Jira<a class="headerlink" href="#jira" title="Permanent link">&para;</a></h2>
 <p><a href="https://issues.apache.org/jira/browse/SPARK-31412">SPARK-31412 Feature requirement (with subtasks list)</a><br />
 <a href="https://docs.google.com/document/d/1mpVjvQZRAkD-Ggy6-hcjXtBPiQoVbZGe3dLnAKgtJ4k/edit?usp=sharing">Design Doc</a></p>
@@ -143,8 +184,7 @@
 <p><a href="https://issues.apache.org/jira/browse/SPARK-9850">SPARK-9850 Adaptive execution in Spark (original idea)</a><br />
 <a href="https://issues.apache.org/jira/secure/attachment/12749984/AdaptiveExecutionInSpark.pdf">Design Doc</a></p>
 <p><a href="https://issues.apache.org/jira/browse/SPARK-9851">SPARK-9851 Support submitting map stages individually in DAGScheduler</a></p>
-<h2 id="code">Code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h2>
-<h3 id="queryexecutionpreparations"><strong>QueryExecution#preparations</strong><a class="headerlink" href="#queryexecutionpreparations" title="Permanent link">&para;</a></h3>
+<h2 id="queryexecutionpreparations"><strong>QueryExecution#preparations</strong><a class="headerlink" href="#queryexecutionpreparations" title="Permanent link">&para;</a></h2>
 <p>org.apache.spark.sql.execution.QueryExecution#preparations</p>
 <pre><code>private[execution] def preparations(
    sparkSession: SparkSession,
@@ -154,7 +194,7 @@
  // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
  adaptiveExecutionRule.toSeq ++
 </code></pre>
-<h3 id="insertadaptivesparkplan"><strong>InsertAdaptiveSparkPlan</strong><a class="headerlink" href="#insertadaptivesparkplan" title="Permanent link">&para;</a></h3>
+<h2 id="insertadaptivesparkplan"><strong>InsertAdaptiveSparkPlan</strong><a class="headerlink" href="#insertadaptivesparkplan" title="Permanent link">&para;</a></h2>
 <p>org.apache.spark.sql.execution.adaptive.InsertAdaptiveSparkPlan</p>
 <pre><code>/**
 * This rule wraps the query plan with an [[AdaptiveSparkPlanExec]], which executes the query plan
@@ -224,7 +264,7 @@ case class InsertAdaptiveSparkPlan(
     }
   } 
 </code></pre>
-<h3 id="adaptivesparkplanexec"><strong>AdaptiveSparkPlanExec</strong><a class="headerlink" href="#adaptivesparkplanexec" title="Permanent link">&para;</a></h3>
+<h2 id="adaptivesparkplanexec"><strong>AdaptiveSparkPlanExec</strong><a class="headerlink" href="#adaptivesparkplanexec" title="Permanent link">&para;</a></h2>
 <p>org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec</p>
 <pre><code>
 /**
@@ -604,7 +644,7 @@ case class AdaptiveSparkPlanExec(
   }
 
 </code></pre>
-<h3 id="querystageexec"><strong>QueryStageExec</strong><a class="headerlink" href="#querystageexec" title="Permanent link">&para;</a></h3>
+<h2 id="querystageexec"><strong>QueryStageExec</strong><a class="headerlink" href="#querystageexec" title="Permanent link">&para;</a></h2>
 <p>org.apache.spark.sql.execution.adaptive.QueryStageExec</p>
 <pre><code>
 /**
@@ -711,7 +751,7 @@ case class BroadcastQueryStageExec(
 
   override def getRuntimeStatistics: Statistics = broadcast.runtimeStatistics
 </code></pre>
-<h3 id="reusequerystage"><strong>reuseQueryStage</strong><a class="headerlink" href="#reusequerystage" title="Permanent link">&para;</a></h3>
+<h2 id="reusequerystage"><strong>reuseQueryStage</strong><a class="headerlink" href="#reusequerystage" title="Permanent link">&para;</a></h2>
 <p>org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#createQueryStages =&gt; reuseQueryStage  </p>
 <p>org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#reuseQueryStage</p>
 <pre><code>  private def reuseQueryStage(existing: QueryStageExec, exchange: Exchange): QueryStageExec = {
@@ -741,7 +781,7 @@ case class BroadcastQueryStageExec(
     reuse
   }
 </code></pre>
-<h3 id="adaptive-coalesce-partitions">Adaptive coalesce partitions<a class="headerlink" href="#adaptive-coalesce-partitions" title="Permanent link">&para;</a></h3>
+<h2 id="adaptive-coalesce-partitions">Adaptive coalesce partitions<a class="headerlink" href="#adaptive-coalesce-partitions" title="Permanent link">&para;</a></h2>
 <p>SQLConf</p>
 <pre><code>  val COALESCE_PARTITIONS_ENABLED =
     buildConf(&quot;spark.sql.adaptive.coalescePartitions.enabled&quot;)

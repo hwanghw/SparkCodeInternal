@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../../img/favicon.ico">
-        <title>YarnAllocator - SparkCodeInternal</title>
+        <title>Hive - SparkCodeInternal</title>
         <link href="../../css/bootstrap.min.css" rel="stylesheet">
         <link href="../../css/font-awesome.min.css" rel="stylesheet">
         <link href="../../css/base.css" rel="stylesheet">
@@ -36,49 +36,49 @@
                             <li class="navitem">
                                 <a href="../.." class="nav-link">Introduction</a>
                             </li>
-                            <li class="dropdown active">
+                            <li class="dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="./" class="dropdown-item active">YarnAllocator</a>
+    <a href="../../SparkCore/YarnAllocator/" class="dropdown-item">YarnAllocator</a>
 </li>
                                     
 <li>
-    <a href="../ShuffleService/" class="dropdown-item">ShuffleService</a>
+    <a href="../../SparkCore/ShuffleService/" class="dropdown-item">ShuffleService</a>
 </li>
                                 </ul>
                             </li>
-                            <li class="dropdown">
+                            <li class="dropdown active">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SQL <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../SparkSQL/Analyzer/" class="dropdown-item">Analyzer</a>
+    <a href="../Analyzer/" class="dropdown-item">Analyzer</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/SparkPlan/" class="dropdown-item">SparkPlan</a>
+    <a href="../SparkPlan/" class="dropdown-item">SparkPlan</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/AQE/" class="dropdown-item">AQE</a>
+    <a href="../AQE/" class="dropdown-item">AQE</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/Aggregation/" class="dropdown-item">Aggregation</a>
+    <a href="../Aggregation/" class="dropdown-item">Aggregation</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/Join/" class="dropdown-item">Join</a>
+    <a href="../Join/" class="dropdown-item">Join</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/Pivot/" class="dropdown-item">Pivot</a>
+    <a href="../Pivot/" class="dropdown-item">Pivot</a>
 </li>
                                     
 <li>
-    <a href="../../SparkSQL/Hive/" class="dropdown-item">Hive</a>
+    <a href="./" class="dropdown-item active">Hive</a>
 </li>
                                 </ul>
                             </li>
@@ -91,17 +91,17 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="../.." class="nav-link">
+                                <a rel="prev" href="../Pivot/" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="../ShuffleService/" class="nav-link">
+                                <a rel="next" class="nav-link disabled">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkCore/YarnAllocator.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkSQL/Hive.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
                             </li>
                     </ul>
                 </div>
@@ -121,12 +121,8 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-level="1"><a href="#yarn-allocator" class="nav-link">Yarn Allocator</a>
+            <li class="nav-item" data-level="1"><a href="#hive" class="nav-link">Hive</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-level="2"><a href="#code" class="nav-link">Code</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
               </ul>
             </li>
         </ul>
@@ -136,45 +132,10 @@
 
 <div class="toc">
 <ul>
-<li><a href="#yarn-allocator">Yarn Allocator</a><ul>
-<li><a href="#code">Code</a><ul>
-<li><a href="#yarnallocator">YarnAllocator</a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li><a href="#hive">Hive</a></li>
 </ul>
 </div>
-<h1 id="yarn-allocator">Yarn Allocator<a class="headerlink" href="#yarn-allocator" title="Permanent link">&para;</a></h1>
-<h2 id="code">Code<a class="headerlink" href="#code" title="Permanent link">&para;</a></h2>
-<h3 id="yarnallocator"><strong>YarnAllocator</strong><a class="headerlink" href="#yarnallocator" title="Permanent link">&para;</a></h3>
-<p>org.apache.spark.deploy.yarn.YarnAllocator</p>
-<pre><code>/**
- * YarnAllocator is charged with requesting containers from the YARN ResourceManager and deciding
- * what to do with containers when YARN fulfills these requests.
- *
- * This class makes use of YARN's AMRMClient APIs. We interact with the AMRMClient in three ways:
- * * Making our resource needs known, which updates local bookkeeping about containers requested.
- * * Calling &quot;allocate&quot;, which syncs our local container requests with the RM, and returns any
- *   containers that YARN has granted to us.  This also functions as a heartbeat.
- * * Processing the containers granted to us to possibly launch executors inside of them.
- *
- * The public methods of this class are thread-safe.  All methods that mutate state are
- * synchronized.
- */
-private[yarn] class YarnAllocator(
-    driverUrl: String,
-    driverRef: RpcEndpointRef,
-    conf: YarnConfiguration,
-    sparkConf: SparkConf,
-    amClient: AMRMClient[ContainerRequest],
-    appAttemptId: ApplicationAttemptId,
-    securityMgr: SecurityManager,
-    localResources: Map[String, LocalResource],
-    resolver: SparkRackResolver,
-    clock: Clock = new SystemClock)
-  extends Logging {
-</code></pre></div>
+<h1 id="hive">Hive<a class="headerlink" href="#hive" title="Permanent link">&para;</a></h1></div>
             </div>
         </div>
 

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>SparkPlan - SparkCodeInternal</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">SparkCodeInternal</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Introduction</a>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../SparkCore/YarnAllocator/" class="dropdown-item">YarnAllocator</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkCore/ShuffleService/" class="dropdown-item">ShuffleService</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="dropdown active">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SQL <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Analyzer/" class="dropdown-item">Analyzer</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active">SparkPlan</a>
+</li>
+                                    
+<li>
+    <a href="../AQE/" class="dropdown-item">AQE</a>
+</li>
+                                    
+<li>
+    <a href="../Aggregation/" class="dropdown-item">Aggregation</a>
+</li>
+                                    
+<li>
+    <a href="../Join/" class="dropdown-item">Join</a>
+</li>
+                                    
+<li>
+    <a href="../Pivot/" class="dropdown-item">Pivot</a>
+</li>
+                                    
+<li>
+    <a href="../Hive/" class="dropdown-item">Hive</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../Analyzer/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../AQE/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkSQL/SparkPlan.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#sparkplan" class="nav-link">SparkPlan</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#sparks-planner" class="nav-link">Spark's Planner</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#call-stack" class="nav-link">Call stack</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#code-of-sessionstate-to-create-queryexecution" class="nav-link">Code of SessionState to create QueryExecution</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#code-of-sparkplan-generation" class="nav-link">Code of SparkPlan generation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#code-of-prepared-sparkplan-generation" class="nav-link">Code of prepared SparkPlan generation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<div class="toc">
+<ul>
+<li><a href="#sparkplan">SparkPlan</a><ul>
+<li><a href="#sparks-planner">Spark&rsquo;s Planner</a></li>
+<li><a href="#call-stack">Call stack</a></li>
+<li><a href="#code-of-sessionstate-to-create-queryexecution">Code of SessionState to create QueryExecution</a></li>
+<li><a href="#code-of-sparkplan-generation">Code of SparkPlan generation</a></li>
+<li><a href="#code-of-prepared-sparkplan-generation">Code of prepared SparkPlan generation</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="sparkplan">SparkPlan<a class="headerlink" href="#sparkplan" title="Permanent link">&para;</a></h1>
+<h2 id="sparks-planner">Spark&rsquo;s Planner<a class="headerlink" href="#sparks-planner" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p>1st Phase: Transforms the logical plan to the physical plan using Strategies<br />
+<strong>QueryExecution.sparkPlan</strong><br />
+<strong>SparkPlanner.plan</strong></p>
+</li>
+<li>
+<p>2nd Phase: use a Rule Executor to make the Physical Plan ready for execution<br />
+<strong>QueryExecution.prepareForExecution</strong></p>
+</li>
+</ul>
+<h2 id="call-stack">Call stack<a class="headerlink" href="#call-stack" title="Permanent link">&para;</a></h2>
+<p>How is QueryExecution.sparkPlan and QueryExecution.prepareForExecution invoked?</p>
+<p>QueryExecution.sparkPlan stack</p>
+<pre><code>      at org.apache.spark.sql.execution.QueryExecution.sparkPlan$lzycompute(QueryExecution.scala:141)=====&gt; lazy val sparkPlan: SparkPlan
+      - locked &lt;0x328c&gt; (a org.apache.spark.sql.execution.QueryExecution)
+      at org.apache.spark.sql.execution.QueryExecution.sparkPlan(QueryExecution.scala:138)
+      at org.apache.spark.sql.execution.QueryExecution.$anonfun$executedPlan$1(QueryExecution.scala:158)
+      at org.apache.spark.sql.execution.QueryExecution$$Lambda$1861.30604162.apply(Unknown Source:-1)
+      at org.apache.spark.sql.catalyst.QueryPlanningTracker.measurePhase(QueryPlanningTracker.scala:111)
+      at org.apache.spark.sql.execution.QueryExecution.$anonfun$executePhase$2(QueryExecution.scala:185)
+      at org.apache.spark.sql.execution.QueryExecution$$Lambda$1461.609375192.apply(Unknown Source:-1)
+      at org.apache.spark.sql.execution.QueryExecution$.withInternalError(QueryExecution.scala:512)
+      at org.apache.spark.sql.execution.QueryExecution.$anonfun$executePhase$1(QueryExecution.scala:185)
+      at org.apache.spark.sql.execution.QueryExecution$$Lambda$1460.911201454.apply(Unknown Source:-1)
+      at org.apache.spark.sql.SparkSession.withActive(SparkSession.scala:779)
+      at org.apache.spark.sql.execution.QueryExecution.executePhase(QueryExecution.scala:184)
+      at org.apache.spark.sql.execution.QueryExecution.executedPlan$lzycompute(QueryExecution.scala:158)
+      at org.apache.spark.sql.execution.QueryExecution.executedPlan(QueryExecution.scala:151)
+      at org.apache.spark.sql.execution.QueryExecution.simpleString(QueryExecution.scala:204)
+      at org.apache.spark.sql.execution.QueryExecution.org$apache$spark$sql$execution$QueryExecution$$explainString(QueryExecution.scala:251)
+      at org.apache.spark.sql.execution.QueryExecution.explainString(QueryExecution.scala:220)
+      at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$6(SQLExecution.scala:103)
+      at org.apache.spark.sql.execution.SQLExecution$$$Lambda$1698.2050525584.apply(Unknown Source:-1)
+      at org.apache.spark.sql.execution.SQLExecution$.withSQLConfPropagated(SQLExecution.scala:171)
+      at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$1(SQLExecution.scala:95)
+      at org.apache.spark.sql.execution.SQLExecution$$$Lambda$1682.2000856156.apply(Unknown Source:-1)
+      at org.apache.spark.sql.SparkSession.withActive(SparkSession.scala:779)
+      at org.apache.spark.sql.execution.SQLExecution$.withNewExecutionId(SQLExecution.scala:64)
+      at org.apache.spark.sql.Dataset.withAction(Dataset.scala:3924)
+      at org.apache.spark.sql.Dataset.collect(Dataset.scala:3188)
+</code></pre>
+<p><strong>org.apache.spark.sql.Dataset</strong></p>
+<pre><code>class Dataset[T] private[sql](
+    @DeveloperApi @Unstable @transient val queryExecution: QueryExecution,
+    @DeveloperApi @Unstable @transient val encoder: Encoder[T])
+  extends Serializable {
+
+  // Note for Spark contributors: if adding or updating any action in `Dataset`, please make sure
+  // you wrap it with `withNewExecutionId` if this actions doesn't call other action.
+
+  def this(sparkSession: SparkSession, logicalPlan: LogicalPlan, encoder: Encoder[T]) = {
+    this(sparkSession.sessionState.executePlan(logicalPlan), encoder)  ====&gt; executePlan() is to create the QueryExecution
+  }
+
+  def collect(): Array[T] = withAction(&quot;collect&quot;, queryExecution)(collectFromPlan)
+
+  private def withAction[U](name: String, qe: QueryExecution)(action: SparkPlan =&gt; U) = {
+    SQLExecution.withNewExecutionId(qe, Some(name)) {
+      QueryExecution.withInternalError(s&quot;&quot;&quot;The &quot;$name&quot; action failed.&quot;&quot;&quot;) {
+        qe.executedPlan.resetMetrics()
+        action(qe.executedPlan)
+      }
+    }
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.execution.SQLExecution#withNewExecutionId</strong></p>
+<pre><code>  /**
+   * Wrap an action that will execute &quot;queryExecution&quot; to track all Spark jobs in the body so that
+   * we can connect them with an execution.
+   */
+  def withNewExecutionId[T](
+      queryExecution: QueryExecution,
+      name: Option[String] = None)(body: =&gt; T): T = queryExecution.sparkSession.withActive {
+</code></pre>
+<p><strong>org.apache.spark.sql.execution.QueryExecution#explainString</strong></p>
+<pre><code>  def explainString(
+      mode: ExplainMode,
+      maxFields: Int = SQLConf.get.maxToStringFields): String = {
+    val concat = new PlanStringConcat()
+    explainString(mode, maxFields, concat.append)
+    withRedaction {
+      concat.toString
+    }
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.execution.QueryExecution#executedPlan</strong></p>
+<pre><code>  // executedPlan should not be used to initialize any SparkPlan. It should be
+  // only used for execution.  =====&gt; ???
+  lazy val executedPlan: SparkPlan = {
+    // We need to materialize the optimizedPlan here, before tracking the planning phase, to ensure
+    // that the optimization time is not counted as part of the planning phase.
+    assertOptimized()
+    executePhase(QueryPlanningTracker.PLANNING) {
+      // clone the plan to avoid sharing the plan instance between different stages like analyzing,
+      // optimizing and planning.
+      QueryExecution.prepareForExecution(preparations, sparkPlan.clone())   =====&gt; sparkPlan is initialized here and then call QueryExecution.prepareForExecution
+    }
+  }
+</code></pre>
+<h2 id="code-of-sessionstate-to-create-queryexecution">Code of SessionState to create QueryExecution<a class="headerlink" href="#code-of-sessionstate-to-create-queryexecution" title="Permanent link">&para;</a></h2>
+<p><strong>org.apache.spark.sql.SparkSession#sessionState</strong></p>
+<pre><code>  /**
+   * State isolated across sessions, including SQL configurations, temporary tables, registered
+   * functions, and everything else that accepts a [[org.apache.spark.sql.internal.SQLConf]].
+   * If `parentSessionState` is not null, the `SessionState` will be a copy of the parent.
+   *
+   * This is internal to Spark and there is no guarantee on interface stability.
+   *
+   * @since 2.2.0
+   */
+  @Unstable
+  @transient
+  lazy val sessionState: SessionState = {
+    parentSessionState
+      .map(_.clone(this))
+      .getOrElse {
+        val state = SparkSession.instantiateSessionState(
+          SparkSession.sessionStateClassName(sharedState.conf),
+          self)
+        state
+      }
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.SparkSession#instantiateSessionState</strong></p>
+<pre><code>  /**
+   * Helper method to create an instance of `SessionState` based on `className` from conf.
+   * The result is either `SessionState` or a Hive based `SessionState`.
+   */
+  private def instantiateSessionState(
+      className: String,
+      sparkSession: SparkSession): SessionState = {
+    try {
+      // invoke new [Hive]SessionStateBuilder(
+      //   SparkSession,
+      //   Option[SessionState])
+      val clazz = Utils.classForName(className)
+      val ctor = clazz.getConstructors.head
+      ctor.newInstance(sparkSession, None).asInstanceOf[BaseSessionStateBuilder].build()
+    } catch {
+      case NonFatal(e) =&gt;
+        throw new IllegalArgumentException(s&quot;Error while instantiating '$className':&quot;, e)
+    }
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.SparkSession#sessionStateClassName</strong></p>
+<pre><code>  private val HIVE_SESSION_STATE_BUILDER_CLASS_NAME =
+    &quot;org.apache.spark.sql.hive.HiveSessionStateBuilder&quot;
+
+  private def sessionStateClassName(conf: SparkConf): String = {
+    conf.get(CATALOG_IMPLEMENTATION) match {
+      case &quot;hive&quot; =&gt; HIVE_SESSION_STATE_BUILDER_CLASS_NAME
+      case &quot;in-memory&quot; =&gt; classOf[SessionStateBuilder].getCanonicalName
+    }
+  }
+
+</code></pre>
+<pre><code>class SessionStateBuilder(
+    session: SparkSession,
+    parentState: Option[SessionState])
+  extends BaseSessionStateBuilder(session, parentState) {
+  override protected def newBuilder: NewBuilder = new SessionStateBuilder(_, _)
+}
+</code></pre>
+<p>or</p>
+<p>Hive</p>
+<pre><code>/**
+ * Builder that produces a Hive-aware `SessionState`.
+ */
+class HiveSessionStateBuilder(
+    session: SparkSession,
+    parentState: Option[SessionState])
+  extends BaseSessionStateBuilder(session, parentState) {
+</code></pre>
+<p><strong>org.apache.spark.sql.internal.BaseSessionStateBuilder#build</strong></p>
+<pre><code>  def build(): SessionState = {
+    new SessionState(
+      session.sharedState,
+      conf,
+      experimentalMethods,
+      functionRegistry,
+      tableFunctionRegistry,
+      udfRegistration,
+      () =&gt; catalog,
+      sqlParser,
+      () =&gt; analyzer,
+      () =&gt; optimizer,
+      planner,
+      () =&gt; streamingQueryManager,
+      listenerManager,
+      () =&gt; resourceLoader,
+      createQueryExecution,
+      createClone,
+      columnarRules,
+      adaptiveRulesHolder)
+  }
+}
+</code></pre>
+<p><strong>org.apache.spark.sql.internal.BaseSessionStateBuilder#createQueryExecution</strong></p>
+<pre><code>  protected def createQueryExecution:
+    (LogicalPlan, CommandExecutionMode.Value) =&gt; QueryExecution =
+      (plan, mode) =&gt; new QueryExecution(session, plan, mode = mode)
+</code></pre>
+<p><strong>org.apache.spark.sql.execution.QueryExecution</strong></p>
+<pre><code>
+/**
+ * The primary workflow for executing relational queries using Spark.  Designed to allow easy
+ * access to the intermediate phases of query execution for developers.
+ *
+ * While this is not a public class, we should avoid changing the function names for the sake of
+ * changing them, because a lot of developers use the feature for debugging.
+ */
+class QueryExecution(
+    val sparkSession: SparkSession,
+    val logical: LogicalPlan,
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker,
+    val mode: CommandExecutionMode.Value = CommandExecutionMode.ALL) extends Logging {
+</code></pre>
+<h2 id="code-of-sparkplan-generation">Code of SparkPlan generation<a class="headerlink" href="#code-of-sparkplan-generation" title="Permanent link">&para;</a></h2>
+<p>QueryExecution.sparkPlan<br />
+    =&gt; QueryExecution.createSparkPlan</p>
+<p>SparkPlanner.plan (strategies defined in SparkPlanner)<br />
+    =&gt; SparkStrategies.plan<br />
+    =&gt; QueryPlanner.plan</p>
+<p><strong>org.apache.spark.sql.execution.QueryExecution</strong></p>
+<pre><code>/**
+ * The primary workflow for executing relational queries using Spark.  Designed to allow easy
+ * access to the intermediate phases of query execution for developers.
+ *
+ * While this is not a public class, we should avoid changing the function names for the sake of
+ * changing them, because a lot of developers use the feature for debugging.
+ */
+class QueryExecution(
+    val sparkSession: SparkSession,
+    val logical: LogicalPlan,
+    val tracker: QueryPlanningTracker = new QueryPlanningTracker,
+    val mode: CommandExecutionMode.Value = CommandExecutionMode.ALL) extends Logging {
+
+
+  lazy val sparkPlan: SparkPlan = {
+    // We need to materialize the optimizedPlan here because sparkPlan is also tracked under
+    // the planning phase
+    assertOptimized()
+    executePhase(QueryPlanningTracker.PLANNING) {
+      // Clone the logical plan here, in case the planner rules change the states of the logical
+      // plan.
+      QueryExecution.createSparkPlan(sparkSession, planner, optimizedPlan.clone())
+    }
+  }
+
+
+  /**
+   * Transform a [[LogicalPlan]] into a [[SparkPlan]].
+   *
+   * Note that the returned physical plan still needs to be prepared for execution.
+   */
+  def createSparkPlan(
+      sparkSession: SparkSession,
+      planner: SparkPlanner,
+      plan: LogicalPlan): SparkPlan = {
+    // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
+    //       but we will implement to choose the best plan.
+    planner.plan(ReturnAnswer(plan)).next()
+  }
+
+</code></pre>
+<p><strong>org.apache.spark.sql.execution.SparkPlanner</strong></p>
+<pre><code>class SparkPlanner(val session: SparkSession, val experimentalMethods: ExperimentalMethods)
+  extends SparkStrategies with SQLConfHelper {
+
+    override def strategies: Seq[Strategy] =
+    experimentalMethods.extraStrategies ++
+      extraPlanningStrategies ++ (
+      LogicalQueryStageStrategy ::
+      PythonEvals ::
+      new DataSourceV2Strategy(session) ::
+      FileSourceStrategy ::
+      DataSourceStrategy ::
+      SpecialLimits ::
+      Aggregation ::
+      Window ::
+      JoinSelection ::
+      InMemoryScans ::
+      SparkScripts ::
+      BasicOperators :: Nil)
+</code></pre>
+<pre><code>abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
+  self: SparkPlanner =&gt;
+
+  override def plan(plan: LogicalPlan): Iterator[SparkPlan] = {
+    super.plan(plan).map { p =&gt;
+      val logicalPlan = plan match {
+        case ReturnAnswer(rootPlan) =&gt; rootPlan
+        case _ =&gt; plan
+      }
+      p.setLogicalLink(logicalPlan)
+      p
+    }
+  }
+</code></pre>
+<p><strong>org.apache.spark.sql.catalyst.planning.QueryPlanner</strong></p>
+<pre><code>
+/**
+ * Abstract class for transforming [[LogicalPlan]]s into physical plans.
+ * Child classes are responsible for specifying a list of [[GenericStrategy]] objects that
+ * each of which can return a list of possible physical plan options.
+ * If a given strategy is unable to plan all of the remaining operators in the tree,
+ * it can call [[GenericStrategy#planLater planLater]], which returns a placeholder
+ * object that will be [[collectPlaceholders collected]] and filled in
+ * using other available strategies.
+ *
+ * TODO: RIGHT NOW ONLY ONE PLAN IS RETURNED EVER...
+ *       PLAN SPACE EXPLORATION WILL BE IMPLEMENTED LATER.
+ *
+ * @tparam PhysicalPlan The type of physical plan produced by this [[QueryPlanner]]
+ */
+abstract class QueryPlanner[PhysicalPlan &lt;: TreeNode[PhysicalPlan]] {
+  /** A list of execution strategies that can be used by the planner */
+  def strategies: Seq[GenericStrategy[PhysicalPlan]]
+
+  def plan(plan: LogicalPlan): Iterator[PhysicalPlan] = {
+    // Obviously a lot to do here still...
+
+    // Collect physical plan candidates.
+    val candidates = strategies.iterator.flatMap(_(plan))
+
+    // The candidates may contain placeholders marked as [[planLater]],
+    // so try to replace them by their child plans.
+    val plans = candidates.flatMap { candidate =&gt;
+      val placeholders = collectPlaceholders(candidate)
+
+      if (placeholders.isEmpty) {
+        // Take the candidate as is because it does not contain placeholders.
+        Iterator(candidate)
+      } else {
+        // Plan the logical plan marked as [[planLater]] and replace the placeholders.
+        placeholders.iterator.foldLeft(Iterator(candidate)) {
+          case (candidatesWithPlaceholders, (placeholder, logicalPlan)) =&gt;
+            // Plan the logical plan for the placeholder.
+            val childPlans = this.plan(logicalPlan)  ====&gt; if there is planLater, recursively apply all the strategies again
+
+            candidatesWithPlaceholders.flatMap { candidateWithPlaceholders =&gt;
+              childPlans.map { childPlan =&gt;
+                // Replace the placeholder by the child plan
+                candidateWithPlaceholders.transformUp {
+                  case p if p.eq(placeholder) =&gt; childPlan
+                }
+              }
+            }
+        }
+      }
+    }
+
+    val pruned = prunePlans(plans)
+    assert(pruned.hasNext, s&quot;No plan for $plan&quot;)
+    pruned
+</code></pre>
+<h2 id="code-of-prepared-sparkplan-generation">Code of prepared SparkPlan generation<a class="headerlink" href="#code-of-prepared-sparkplan-generation" title="Permanent link">&para;</a></h2>
+<p>In QueryExecution.prepareForExecution(), rules (Rule[SparkPlan]) are applied<br />
+  =&gt; rules are defined in QueryExecution.preparations()</p>
+<p><strong>org.apache.spark.sql.execution.QueryExecution#prepareForExecution</strong></p>
+<pre><code>
+  protected def preparations: Seq[Rule[SparkPlan]] = {
+    QueryExecution.preparations(sparkSession,
+      Option(InsertAdaptiveSparkPlan(AdaptiveExecutionContext(sparkSession, this))), false)
+  }
+
+  /**
+   * Construct a sequence of rules that are used to prepare a planned [[SparkPlan]] for execution.
+   * These rules will make sure subqueries are planned, make use the data partitioning and ordering
+   * are correct, insert whole stage code gen, and try to reduce the work done by reusing exchanges
+   * and subqueries.
+   */
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
+      subquery: Boolean): Seq[Rule[SparkPlan]] = {
+    // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
+    // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
+    adaptiveExecutionRule.toSeq ++
+    Seq(
+      CoalesceBucketsInJoin,
+      PlanDynamicPruningFilters(sparkSession),
+      PlanSubqueries(sparkSession),
+      RemoveRedundantProjects,
+      EnsureRequirements(),
+      // `ReplaceHashWithSortAgg` needs to be added after `EnsureRequirements` to guarantee the
+      // sort order of each node is checked to be valid.
+      ReplaceHashWithSortAgg,
+      // `RemoveRedundantSorts` needs to be added after `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      ApplyColumnarRulesAndInsertTransitions(
+        sparkSession.sessionState.columnarRules, outputsColumnar = false),
+      CollapseCodegenStages()) ++
+      (if (subquery) {
+        Nil
+      } else {
+        Seq(ReuseExchangeAndSubquery)
+      })
+  }
+
+  /**
+   * Prepares a planned [[SparkPlan]] for execution by inserting shuffle operations and internal
+   * row format conversions as needed.
+   */
+  private[execution] def prepareForExecution(
+      preparations: Seq[Rule[SparkPlan]],
+      plan: SparkPlan): SparkPlan = {
+    val planChangeLogger = new PlanChangeLogger[SparkPlan]()
+    val preparedPlan = preparations.foldLeft(plan) { case (sp, rule) =&gt;
+      val result = rule.apply(sp)
+      planChangeLogger.logRule(rule.ruleName, sp, result)
+      result
+    }
+    planChangeLogger.logBatch(&quot;Preparations&quot;, plan, preparedPlan)
+    preparedPlan
+  }
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js" defer></script>
+        <script src="../../search/main.js" defer></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
