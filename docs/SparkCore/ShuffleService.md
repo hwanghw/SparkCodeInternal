@@ -53,8 +53,8 @@ private[spark] class NettyBlockTransferService(
 ```
 
 ## Improve Spark shuffle server responsiveness to non-ChunkFetch requests
-[SPARK-24355 Improve Spark shuffle server responsiveness to non-ChunkFetch requests](https://issues.apache.org/jira/browse/SPARK-24355)
-[SPARK-30512 Use a dedicated boss event group loop in the netty pipeline for external shuffle service](https://issues.apache.org/jira/browse/SPARK-30512)
+[SPARK-24355 Improve Spark shuffle server responsiveness to non-ChunkFetch requests](https://issues.apache.org/jira/browse/SPARK-24355)  
+[SPARK-30512 Use a dedicated boss event group loop in the netty pipeline for external shuffle service](https://issues.apache.org/jira/browse/SPARK-30512)  
 [SPARK-30623 Spark external shuffle allow disable of separate event loop group](https://issues.apache.org/jira/browse/SPARK-30623)  
 What changes were proposed in this pull request? Fix the regression caused by PR #22173.
 The original PR changes the logic of handling `ChunkFetchReqeust` from async to sync, that's causes the shuffle benchmark regression.
@@ -171,11 +171,11 @@ Note: This test was with a dedicated boss event loop group which is why we don't
 
 
 ## push-based shuffle
-[SPARK-30602 SPIP: Support push-based shuffle to improve shuffle efficiency](https://issues.apache.org/jira/browse/SPARK-30602)
-[doc: SPIP: Spark Push-Based Shuffle](https://docs.google.com/document/d/1mYzKVZllA5Flw8AtoX7JUcXBOnNIDADWRbJ7GI6Y71Q/edit)
+[SPARK-30602 SPIP: Support push-based shuffle to improve shuffle efficiency](https://issues.apache.org/jira/browse/SPARK-30602)  
+[doc: SPIP: Spark Push-Based Shuffle](https://docs.google.com/document/d/1mYzKVZllA5Flw8AtoX7JUcXBOnNIDADWRbJ7GI6Y71Q/edit)  
 [Consolidated reference PR for Push-based shuffle](https://github.com/apache/spark/pull/29808)
 
-[SPARK-32917 Add support for executors to push shuffle blocks after successful map task completion](https://issues.apache.org/jira/browse/SPARK-32917)
+[SPARK-32917 Add support for executors to push shuffle blocks after successful map task completion](https://issues.apache.org/jira/browse/SPARK-32917)  
 [PR SPARK-32917](https://github.com/apache/spark/pull/30312/files)
 
 ## Use remote storage for persisting shuffle data

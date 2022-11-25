@@ -13,6 +13,7 @@ nav:
     - YarnAllocator: 'SparkCore/YarnAllocator.md'
     - ShuffleService: 'SparkCore/ShuffleService.md'
   - Spark SQL:
+      - Analyzer: 'SparkSQL/Analyzer.md'
       - SparkPlan: 'SparkSQL/SparkPlan.md'
       - AQE: 'SparkSQL/AQE.md'
       - Aggregation: 'SparkSQL/Aggregation.md'

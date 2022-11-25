@@ -20,9 +20,7 @@
 
 [SPARK-9851 Support submitting map stages individually in DAGScheduler](https://issues.apache.org/jira/browse/SPARK-9851)
 
-## Code
-
-### **QueryExecution#preparations**
+## **QueryExecution#preparations**
 
 org.apache.spark.sql.execution.QueryExecution#preparations
 ```
@@ -35,7 +33,7 @@ private[execution] def preparations(
  adaptiveExecutionRule.toSeq ++
 ```
 
-### **InsertAdaptiveSparkPlan**
+## **InsertAdaptiveSparkPlan**
 org.apache.spark.sql.execution.adaptive.InsertAdaptiveSparkPlan
 ```
 /**
@@ -107,7 +105,7 @@ case class InsertAdaptiveSparkPlan(
   } 
 ```
 
-### **AdaptiveSparkPlanExec**
+## **AdaptiveSparkPlanExec**
 
 org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec
 ```
@@ -492,7 +490,7 @@ case class AdaptiveSparkPlanExec(
   
 ```
 
-### **QueryStageExec**
+## **QueryStageExec**
 org.apache.spark.sql.execution.adaptive.QueryStageExec
 ```
 
@@ -607,7 +605,7 @@ case class BroadcastQueryStageExec(
   override def getRuntimeStatistics: Statistics = broadcast.runtimeStatistics
 ```
 
-### **reuseQueryStage**
+## **reuseQueryStage**
 
 org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#createQueryStages => reuseQueryStage  
 
@@ -645,7 +643,7 @@ org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec#newReuseInstance
   }
 ```
 
-### Adaptive coalesce partitions
+## Adaptive coalesce partitions
 SQLConf
 ```
   val COALESCE_PARTITIONS_ENABLED =
