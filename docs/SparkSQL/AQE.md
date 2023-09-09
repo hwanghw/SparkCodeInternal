@@ -20,6 +20,7 @@
 
 [SPARK-9851 Support submitting map stages individually in DAGScheduler](https://issues.apache.org/jira/browse/SPARK-9851)
 
+[SPARK document Adaptive Query Execution](https://spark.apache.org/docs/latest/sql-performance-tuning.html#adaptive-query-execution)
 ## **QueryExecution#preparations**
 
 org.apache.spark.sql.execution.QueryExecution#preparations
@@ -145,6 +146,7 @@ case class AdaptiveSparkPlanExec(
     result
   }
 
+ ====================  getFinalPhysicalPlan =========================
   private def getFinalPhysicalPlan(): SparkPlan = lock.synchronized {
     if (isFinalPlan) return currentPhysicalPlan
 
@@ -156,11 +158,11 @@ case class AdaptiveSparkPlanExec(
       // Use inputPlan logicalLink here in case some top level physical nodes may be removed
       // during `initialPlan`
       var currentLogicalPlan = inputPlan.logicalLink.get
-      var result = createQueryStages(currentPhysicalPlan)
+      var result = createQueryStages(currentPhysicalPlan) ===> createQueryStages
       val events = new LinkedBlockingQueue[StageMaterializationEvent]()
       val errors = new mutable.ArrayBuffer[Throwable]()
       var stagesToReplace = Seq.empty[QueryStageExec]
-      while (!result.allChildStagesMaterialized) {
+      while (!result.allChildStagesMaterialized) { ===> wait till all child stages materialized
         currentPhysicalPlan = result.newPlan
         if (result.newStages.nonEmpty) {
           stagesToReplace = result.newStages ++ stagesToReplace
@@ -183,9 +185,9 @@ case class AdaptiveSparkPlanExec(
           // Start materialization of all new stages and fail fast if any stages failed eagerly
           reorderedNewStages.foreach { stage =>
             try {
-              stage.materialize().onComplete { res =>
+              stage.materialize().onComplete { res => ===> materialize() is done async
                 if (res.isSuccess) {
-                  events.offer(StageSuccess(stage, res.get))
+                  events.offer(StageSuccess(stage, res.get)) ===> put into events queue
                 } else {
                   events.offer(StageFailure(stage, res.failed.get))
                 }
@@ -199,10 +201,11 @@ case class AdaptiveSparkPlanExec(
           
         }
 
+        ====== Wait on the next completed stage ======
         // Wait on the next completed stage, which indicates new stats are available and probably
         // new stages can be created. There might be other stages that finish at around the same
         // time, so we process those stages too in order to reduce re-planning.
-        val nextMsg = events.take()
+        val nextMsg = events.take()  ===> block wait on event queue
         val rem = new util.ArrayList[StageMaterializationEvent]()
         events.drainTo(rem)
         (Seq(nextMsg) ++ rem.asScala).foreach {
@@ -217,6 +220,7 @@ case class AdaptiveSparkPlanExec(
           cleanUpAndThrowException(errors.toSeq, None)
         }
 
+        ======= re-optimizing and re-planning ======
         // Try re-optimizing and re-planning. Adopt the new plan if its cost is equal to or less
         // than that of the current plan; otherwise keep the current physical plan together with
         // the current logical plan since the physical plan's logical links point to the logical
@@ -547,7 +551,18 @@ abstract class QueryStageExec extends LeafExecNode {
 =========================================================================================================  
 ```
 
+## **ShuffleQueryStageExec**
+&nbsp;org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec#getFinalPhysicalPlan =>  
+&nbsp;&nbsp;    org.apache.spark.sql.execution.adaptive.QueryStageExec#materialize =>  
+&nbsp;&nbsp;&nbsp;        org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec#doMaterialize=>  
+&nbsp;&nbsp;&nbsp;&nbsp;            org.apache.spark.sql.execution.exchange.ShuffleExchangeLike#submitShuffleJob=>  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                org.apache.spark.sql.execution.SparkPlan#executeQuery=>  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                    org.apache.spark.sql.execution.exchange.ShuffleExchangeExec#mapOutputStatisticsFuture=>  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                        org.apache.spark.SparkContext#submitMapStage=>  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                         org.apache.spark.scheduler.DAGScheduler#submitMapStage=>  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                            org.apache.spark.scheduler.JobWaiter
 
+run test `test("SPARK-37063: OptimizeSkewInRebalancePartitions support optimize non-root node")`
 
 ```
 /**
@@ -569,7 +584,7 @@ case class ShuffleQueryStageExec(
       throw new IllegalStateException(s"wrong plan for shuffle stage:\n ${plan.treeString}")
   }
 
-  @transient private lazy val shuffleFuture = shuffle.submitShuffleJob
+  @transient private lazy val shuffleFuture = shuffle.submitShuffleJob  ===> org.apache.spark.sql.execution.exchange.ShuffleExchangeLike#submitShuffleJob
 
   override def doMaterialize(): Future[Any] = shuffleFuture
   
@@ -577,8 +592,197 @@ case class ShuffleQueryStageExec(
   override def getRuntimeStatistics: Statistics = shuffle.runtimeStatistics
 ```
 
+org.apache.spark.sql.execution.exchange.ShuffleExchangeLike#submitShuffleJob
+
+```
+  /**
+   * The asynchronous job that materializes the shuffle. It also does the preparations work,
+   * such as waiting for the subqueries.
+   */
+  final def submitShuffleJob: Future[MapOutputStatistics] = executeQuery {
+    mapOutputStatisticsFuture
+  }
+
+```
+===> org.apache.spark.sql.execution.exchange.ShuffleExchangeExec#mapOutputStatisticsFuture
+```
+  // 'mapOutputStatisticsFuture' is only needed when enable AQE.
+  @transient
+  override lazy val mapOutputStatisticsFuture: Future[MapOutputStatistics] = {
+    if (inputRDD.getNumPartitions == 0) {
+      Future.successful(null)
+    } else {
+      sparkContext.submitMapStage(shuffleDependency)
+    }
+  }
 ```
 
+===> org.apache.spark.sql.execution.SparkPlan#executeQuery
+```
+  /**
+   * Executes a query after preparing the query and adding query plan information to created RDDs
+   * for visualization.
+   */
+  protected final def executeQuery[T](query: => T): T = {
+    RDDOperationScope.withScope(sparkContext, nodeName, false, true) {
+      prepare()
+      waitForSubqueries()
+      query
+    }
+  }
+
+```
+===> org.apache.spark.SparkContext#submitMapStage
+```
+  /**
+   * Submit a map stage for execution. This is currently an internal API only, but might be
+   * promoted to DeveloperApi in the future.
+   */
+  private[spark] def submitMapStage[K, V, C](dependency: ShuffleDependency[K, V, C])
+      : SimpleFutureAction[MapOutputStatistics] = {
+    assertNotStopped()
+    val callSite = getCallSite()
+    var result: MapOutputStatistics = null
+    val waiter = dagScheduler.submitMapStage(
+      dependency,
+      (r: MapOutputStatistics) => { result = r },
+      callSite,
+      localProperties.get)
+    new SimpleFutureAction[MapOutputStatistics](waiter, result)
+  }
+```
+===> org.apache.spark.scheduler.DAGScheduler#submitMapStage
+```
+  /**
+   * Submit a shuffle map stage to run independently and get a JobWaiter object back. The waiter
+   * can be used to block until the job finishes executing or can be used to cancel the job.
+   * This method is used for adaptive query planning, to run map stages and look at statistics
+   * about their outputs before submitting downstream stages.
+   *
+   * @param dependency the ShuffleDependency to run a map stage for
+   * @param callback function called with the result of the job, which in this case will be a
+   *   single MapOutputStatistics object showing how much data was produced for each partition
+   * @param callSite where in the user program this job was submitted
+   * @param properties scheduler properties to attach to this job, e.g. fair scheduler pool name
+   */
+  def submitMapStage[K, V, C](
+      dependency: ShuffleDependency[K, V, C],
+      callback: MapOutputStatistics => Unit,
+      callSite: CallSite,
+      properties: Properties): JobWaiter[MapOutputStatistics] = {
+
+    val rdd = dependency.rdd
+    val jobId = nextJobId.getAndIncrement()
+    if (rdd.partitions.length == 0) {
+      throw SparkCoreErrors.cannotRunSubmitMapStageOnZeroPartitionRDDError()
+    }
+
+    // SPARK-23626: `RDD.getPartitions()` can be slow, so we eagerly compute
+    // `.partitions` on every RDD in the DAG to ensure that `getPartitions()`
+    // is evaluated outside of the DAGScheduler's single-threaded event loop:
+    eagerlyComputePartitionsForRddAndAncestors(rdd)
+
+    // We create a JobWaiter with only one "task", which will be marked as complete when the whole
+    // map stage has completed, and will be passed the MapOutputStatistics for that stage.
+    // This makes it easier to avoid race conditions between the user code and the map output
+    // tracker that might result if we told the user the stage had finished, but then they queries
+    // the map output tracker and some node failures had caused the output statistics to be lost.
+    val waiter = new JobWaiter[MapOutputStatistics](
+      this, jobId, 1,
+      (_: Int, r: MapOutputStatistics) => callback(r))
+    eventProcessLoop.post(MapStageSubmitted(
+      jobId, dependency, callSite, waiter, Utils.cloneProperties(properties)))
+    waiter
+  }
+```
+===> org.apache.spark.scheduler.JobWaiter
+```
+/**
+ * An object that waits for a DAGScheduler job to complete. As tasks finish, it passes their
+ * results to the given handler function.
+ */
+private[spark] class JobWaiter[T](
+    dagScheduler: DAGScheduler,
+    val jobId: Int,
+    totalTasks: Int,
+    resultHandler: (Int, T) => Unit)
+  extends JobListener with Logging {
+```
+
+
+stack in `test("SPARK-37063: OptimizeSkewInRebalancePartitions support optimize non-root node")`
+```
+	  at org.apache.spark.sql.execution.SparkPlan.prepare(SparkPlan.scala:291)
+	  at org.apache.spark.sql.execution.SparkPlan.$anonfun$executeQuery$1(SparkPlan.scala:244)
+	  at org.apache.spark.sql.execution.SparkPlan$$Lambda$2339.1114370802.apply(Unknown Source:-1)
+	  at org.apache.spark.rdd.RDDOperationScope$.withScope(RDDOperationScope.scala:151)
+	  at org.apache.spark.sql.execution.SparkPlan.executeQuery(SparkPlan.scala:243)
+	  at org.apache.spark.sql.execution.exchange.ShuffleExchangeLike.submitShuffleJob(ShuffleExchangeExec.scala:73)
+	  at org.apache.spark.sql.execution.exchange.ShuffleExchangeLike.submitShuffleJob$(ShuffleExchangeExec.scala:72)
+	  at org.apache.spark.sql.execution.exchange.ShuffleExchangeExec.submitShuffleJob(ShuffleExchangeExec.scala:120)
+	  at org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec.shuffleFuture$lzycompute(QueryStageExec.scala:185)
+	  - locked <0x362c> (a org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec)
+	  at org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec.shuffleFuture(QueryStageExec.scala:185)
+	  at org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec.doMaterialize(QueryStageExec.scala:187)
+	  at org.apache.spark.sql.execution.adaptive.QueryStageExec.materialize(QueryStageExec.scala:61)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.$anonfun$getFinalPhysicalPlan$5(AdaptiveSparkPlanExec.scala:286)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.$anonfun$getFinalPhysicalPlan$5$adapted(AdaptiveSparkPlanExec.scala:284)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec$$Lambda$2336.1706125628.apply(Unknown Source:-1)
+	  at scala.collection.Iterator.foreach(Iterator.scala:943)
+	  at scala.collection.Iterator.foreach$(Iterator.scala:943)
+	  at scala.collection.AbstractIterator.foreach(Iterator.scala:1431)
+	  at scala.collection.IterableLike.foreach(IterableLike.scala:74)
+	  at scala.collection.IterableLike.foreach$(IterableLike.scala:73)
+	  at scala.collection.AbstractIterable.foreach(Iterable.scala:56)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.$anonfun$getFinalPhysicalPlan$1(AdaptiveSparkPlanExec.scala:284)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec$$Lambda$2295.312068212.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.SparkSession.withActive(SparkSession.scala:827)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.getFinalPhysicalPlan(AdaptiveSparkPlanExec.scala:256)
+	  - locked <0x389c> (a java.lang.Object)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.withFinalPlanUpdate(AdaptiveSparkPlanExec.scala:401)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec.executeCollect(AdaptiveSparkPlanExec.scala:374)
+	  at org.apache.spark.sql.Dataset.collectFromPlan(Dataset.scala:4384)
+	  at org.apache.spark.sql.Dataset.$anonfun$collect$1(Dataset.scala:3625)
+	  at org.apache.spark.sql.Dataset$$Lambda$2283.289194317.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.Dataset.$anonfun$withAction$2(Dataset.scala:4374)
+	  at org.apache.spark.sql.Dataset$$Lambda$2290.1482151715.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.execution.QueryExecution$.withInternalError(QueryExecution.scala:529)
+	  at org.apache.spark.sql.Dataset.$anonfun$withAction$1(Dataset.scala:4372)
+	  at org.apache.spark.sql.Dataset$$Lambda$2284.280804333.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$6(SQLExecution.scala:118)
+	  at org.apache.spark.sql.execution.SQLExecution$$$Lambda$1713.806842585.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.execution.SQLExecution$.withSQLConfPropagated(SQLExecution.scala:195)
+	  at org.apache.spark.sql.execution.SQLExecution$.$anonfun$withNewExecutionId$1(SQLExecution.scala:103)
+	  at org.apache.spark.sql.execution.SQLExecution$$$Lambda$1703.1020198427.apply(Unknown Source:-1)
+	  at org.apache.spark.sql.SparkSession.withActive(SparkSession.scala:827)
+	  at org.apache.spark.sql.execution.SQLExecution$.withNewExecutionId(SQLExecution.scala:65)
+	  at org.apache.spark.sql.Dataset.withAction(Dataset.scala:4372)
+	  at org.apache.spark.sql.Dataset.collect(Dataset.scala:3625)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.runAdaptiveAndVerifyResult(AdaptiveQueryExecSuite.scala:83)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.checkRebalance$1(AdaptiveQueryExecSuite.scala:2417)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.$anonfun$new$273(AdaptiveQueryExecSuite.scala:2430)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite$$Lambda$2074.1374673778.apply$mcV$sp(Unknown Source:-1)
+	  at org.apache.spark.sql.catalyst.plans.SQLHelper.withSQLConf(SQLHelper.scala:54)
+	  at org.apache.spark.sql.catalyst.plans.SQLHelper.withSQLConf$(SQLHelper.scala:38)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.org$apache$spark$sql$test$SQLTestUtilsBase$$super$withSQLConf(AdaptiveQueryExecSuite.scala:51)
+	  at org.apache.spark.sql.test.SQLTestUtilsBase.withSQLConf(SQLTestUtils.scala:247)
+	  at org.apache.spark.sql.test.SQLTestUtilsBase.withSQLConf$(SQLTestUtils.scala:245)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.withSQLConf(AdaptiveQueryExecSuite.scala:51)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.$anonfun$new$270(AdaptiveQueryExecSuite.scala:2429)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite$$Lambda$2046.860717660.apply$mcV$sp(Unknown Source:-1)
+	  at org.apache.spark.sql.catalyst.plans.SQLHelper.withSQLConf(SQLHelper.scala:54)
+	  at org.apache.spark.sql.catalyst.plans.SQLHelper.withSQLConf$(SQLHelper.scala:38)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.org$apache$spark$sql$test$SQLTestUtilsBase$$super$withSQLConf(AdaptiveQueryExecSuite.scala:51)
+	  at org.apache.spark.sql.test.SQLTestUtilsBase.withSQLConf(SQLTestUtils.scala:247)
+	  at org.apache.spark.sql.test.SQLTestUtilsBase.withSQLConf$(SQLTestUtils.scala:245)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.withSQLConf(AdaptiveQueryExecSuite.scala:51)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite.$anonfun$new$269(AdaptiveQueryExecSuite.scala:2411)
+	  at org.apache.spark.sql.execution.adaptive.AdaptiveQueryExecSuite$$Lambda$2044.1413677222.apply$mcV$sp(Unknown Source:-1)
+```
+
+## **BroadcastQueryStageExec**
+
+```
 /**
  * A broadcast query stage whose child is a [[BroadcastExchangeLike]] or [[ReusedExchangeExec]].
  *

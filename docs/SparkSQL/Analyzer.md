@@ -3,7 +3,7 @@
 # Analyzer
 
 ## Logical query plan analyzer
-```
+```scala
 abstract class BaseSessionStateBuilder(
     val session: SparkSession,
     val parentState: Option[SessionState]) {
@@ -27,7 +27,7 @@ abstract class BaseSessionStateBuilder(
 
 ## ResolveSessionCatalog
 
-```
+```scala
 
 /**
  * Resolves catalogs from the multi-part identifiers in SQL statements, and convert the statements

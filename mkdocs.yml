@@ -20,6 +20,10 @@ nav:
       - Join: 'SparkSQL/Join.md'
       - Pivot: 'SparkSQL/Pivot.md'
       - Hive: 'SparkSQL/Hive.md'
+  - Spark SparkStructuredStreaming:
+      - MicroBatchExecution: 'SparkStructuredStreaming/MicroBatchExecution.md'
+      - RocksDBFileManager: 'SparkStructuredStreaming/RocksDBFileManager.md'
+      - KafkaSqlConnector: 'SparkStructuredStreaming/KafkaSqlConnector.md'
 markdown_extensions:
     - toc:
         permalink: true
