@@ -82,6 +82,23 @@
 </li>
                                 </ul>
                             </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark SparkStructuredStreaming <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../SparkStructuredStreaming/MicroBatchExecution/" class="dropdown-item">MicroBatchExecution</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkStructuredStreaming/RocksDBFileManager/" class="dropdown-item">RocksDBFileManager</a>
+</li>
+                                    
+<li>
+    <a href="../../SparkStructuredStreaming/KafkaSqlConnector/" class="dropdown-item">KafkaSqlConnector</a>
+</li>
+                                </ul>
+                            </li>
                         </ul>
 
                     <ul class="nav navbar-nav ml-auto">
@@ -154,7 +171,7 @@
 </div>
 <h1 id="analyzer">Analyzer<a class="headerlink" href="#analyzer" title="Permanent link">&para;</a></h1>
 <h2 id="logical-query-plan-analyzer">Logical query plan analyzer<a class="headerlink" href="#logical-query-plan-analyzer" title="Permanent link">&para;</a></h2>
-<pre><code>abstract class BaseSessionStateBuilder(
+<pre><code class="language-scala">abstract class BaseSessionStateBuilder(
     val session: SparkSession,
     val parentState: Option[SessionState]) {
   /**
@@ -175,7 +192,7 @@
 
 </code></pre>
 <h2 id="resolvesessioncatalog">ResolveSessionCatalog<a class="headerlink" href="#resolvesessioncatalog" title="Permanent link">&para;</a></h2>
-<pre><code>
+<pre><code class="language-scala">
 /**
  * Resolves catalogs from the multi-part identifiers in SQL statements, and convert the statements
  * to the corresponding v1 or v2 commands if the resolved catalog is the session catalog.
