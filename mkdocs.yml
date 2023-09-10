@@ -10,8 +10,9 @@ theme:
 nav:
   - Introduction: 'index.md'
   - Spark Core:
-    - YarnAllocator: 'SparkCore/YarnAllocator.md'
-    - ShuffleService: 'SparkCore/ShuffleService.md'
+      - TaskScheduling: "SparkCore/TaskScheduling.md"
+      - YarnAllocator: 'SparkCore/YarnAllocator.md'
+      - ShuffleService: 'SparkCore/ShuffleService.md'
   - Spark SQL:
       - Analyzer: 'SparkSQL/Analyzer.md'
       - SparkPlan: 'SparkSQL/SparkPlan.md'
