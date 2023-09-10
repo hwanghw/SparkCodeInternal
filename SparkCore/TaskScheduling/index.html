@@ -36,9 +36,13 @@
                             <li class="navitem">
                                 <a href="../.." class="nav-link">Introduction</a>
                             </li>
-                            <li class="dropdown">
+                            <li class="dropdown active">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Spark Core <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="./" class="dropdown-item active">TaskScheduling</a>
+</li>
                                     
 <li>
     <a href="../YarnAllocator/" class="dropdown-item">YarnAllocator</a>
@@ -108,6 +112,16 @@
                             </a>
                         </li>
                             <li class="nav-item">
+                                <a rel="prev" href="../.." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../YarnAllocator/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a href="https://github.com/hwanghw/SparkCodeInternal/tree/main/docs/SparkCore/TaskScheduling.md" class="nav-link">Edit on hwanghw/SparkCodeInternal</a>
                             </li>
                     </ul>
@@ -156,9 +170,9 @@
 </div>
 <h1 id="taskschedulerimpl">TaskSchedulerImpl<a class="headerlink" href="#taskschedulerimpl" title="Permanent link">&para;</a></h1>
 <h2 id="resourceoffers"><strong>resourceOffers</strong><a class="headerlink" href="#resourceoffers" title="Permanent link">&para;</a></h2>
-<p>&nbsp;org.apache.spark.scheduler.TaskSchedulerImpl#resourceOffers=&gt;
-&nbsp;&nbsp; org.apache.spark.scheduler.TaskSchedulerImpl#resourceOfferSingleTaskSet=&gt;
-     org.apache.spark.scheduler.TaskSetManager#resourceOffer</p>
+<p>&nbsp;org.apache.spark.scheduler.TaskSchedulerImpl#resourceOffers=&gt;<br />
+&nbsp;&nbsp; org.apache.spark.scheduler.TaskSchedulerImpl#resourceOfferSingleTaskSet=&gt;<br />
+&nbsp;&nbsp;&nbsp;    org.apache.spark.scheduler.TaskSetManager#resourceOffer  </p>
 <p>org.apache.spark.scheduler.TaskSchedulerImpl#resourceOffers</p>
 <pre><code class="language-scala">  /**
    * Called by cluster manager to offer resources on workers. We respond by asking our active task
@@ -367,9 +381,9 @@ private[spark] class TaskDescription(
 }
 </code></pre>
 <h2 id="handle-failed-task"><strong>handle failed task</strong><a class="headerlink" href="#handle-failed-task" title="Permanent link">&para;</a></h2>
-<p>&nbsp;org.apache.spark.scheduler.TaskSchedulerImpl#handleFailedTask=&gt;
-&nbsp;&nbsp; org.apache.spark.scheduler.TaskSetManager#handleFailedTask=&gt;
-&nbsp;&nbsp;  org.apache.spark.scheduler.DAGScheduler#taskEnded</p>
+<p>&nbsp;org.apache.spark.scheduler.TaskSchedulerImpl#handleFailedTask=&gt;<br />
+&nbsp;&nbsp; org.apache.spark.scheduler.TaskSetManager#handleFailedTask=&gt;<br />
+&nbsp;&nbsp;&nbsp;  org.apache.spark.scheduler.DAGScheduler#taskEnded</p>
 <p>org.apache.spark.scheduler.TaskSetManager#handleFailedTask</p>
 <pre><code class="language-scala">
   /**
