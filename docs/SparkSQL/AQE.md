@@ -849,7 +849,7 @@ org.apache.spark.sql.execution.adaptive.ShuffleQueryStageExec#newReuseInstance
 
 ## Adaptive coalesce partitions
 SQLConf
-```
+```scala
   val COALESCE_PARTITIONS_ENABLED =
     buildConf("spark.sql.adaptive.coalescePartitions.enabled")
       .doc(s"When true and '${ADAPTIVE_EXECUTION_ENABLED.key}' is true, Spark will coalesce " +

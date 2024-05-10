@@ -4,7 +4,7 @@
 ## **resourceOffers**
 &nbsp;org.apache.spark.scheduler.TaskSchedulerImpl#resourceOffers=>  
 &nbsp;&nbsp; org.apache.spark.scheduler.TaskSchedulerImpl#resourceOfferSingleTaskSet=>  
-&nbsp;&nbsp;&nbsp;    org.apache.spark.scheduler.TaskSetManager#resourceOffer  
+&nbsp;&nbsp;&nbsp;    org.apache.spark.scheduler.TaskSetManager#resourceOffer
 
 org.apache.spark.scheduler.TaskSchedulerImpl#resourceOffers
 ```scala

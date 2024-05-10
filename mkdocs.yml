@@ -21,7 +21,7 @@ nav:
       - Join: 'SparkSQL/Join.md'
       - Pivot: 'SparkSQL/Pivot.md'
       - Hive: 'SparkSQL/Hive.md'
-  - Spark SparkStructuredStreaming:
+  - Spark Structured Streaming:
       - MicroBatchExecution: 'SparkStructuredStreaming/MicroBatchExecution.md'
       - RocksDBFileManager: 'SparkStructuredStreaming/RocksDBFileManager.md'
       - KafkaSqlConnector: 'SparkStructuredStreaming/KafkaSqlConnector.md'
